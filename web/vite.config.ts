@@ -13,4 +13,11 @@ export default defineConfig({
   server: {
     fs: { allow: ['..'] },
   },
+  preview: {
+    // Railway serveert via een eigen domein. Vite's preview-server weigert
+    // standaard elke Host die hij niet kent (bescherming tegen DNS-rebinding)
+    // en geeft dan "Blocked request". Dit zijn statische bestanden van een
+    // publieke demo, dus elke host mag.
+    allowedHosts: true,
+  },
 })
