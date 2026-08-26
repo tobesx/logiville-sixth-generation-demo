@@ -51,7 +51,7 @@ export default function PasswordGateModal({ expected, onUnlock, onClose }: Passw
         className="wca-settings-card"
         style={{ width: 340 }}
         role="dialog"
-        aria-label="Voer de pincode in"
+        aria-label="Enter the PIN"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -64,14 +64,14 @@ export default function PasswordGateModal({ expected, onUnlock, onClose }: Passw
                 Settings locked
               </h2>
               <p className="font-['IBM_Plex_Sans'] text-[13px] text-[var(--text-muted)]">
-                Voer de pincode in
+                Enter the PIN
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Sluiten"
+            aria-label="Close"
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border-brand)] text-[var(--text-muted)] hover:border-[var(--border-soft)] hover:text-[var(--text-white)]"
           >
             <X className="h-5 w-5" />
@@ -81,7 +81,7 @@ export default function PasswordGateModal({ expected, onUnlock, onClose }: Passw
         <div
           className="mt-6 flex items-center justify-center gap-4"
           role="status"
-          aria-label={`${entry.length} van ${expected.length} cijfers ingevoerd`}
+          aria-label={`${entry.length} of ${expected.length} digits entered`}
         >
           {Array.from({ length: expected.length }, (_, index) => (
             <span
@@ -119,7 +119,7 @@ export default function PasswordGateModal({ expected, onUnlock, onClose }: Passw
             type="button"
             onClick={backspace}
             disabled={entry.length === 0}
-            aria-label="Wissen"
+            aria-label="Delete"
             className="flex h-[68px] w-[68px] items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:text-[var(--text-white)] disabled:opacity-30 active:bg-[var(--bg-deep)]"
           >
             <Delete className="h-6 w-6" />

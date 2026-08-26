@@ -733,7 +733,10 @@ export default function WorkforceCallAgent() {
           onToggle={toggleReal}
           onAddPerson={addPerson}
           onRemovePerson={removePerson}
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => {
+            setSettingsOpen(false)
+            setSettingsUnlocked(false)
+          }}
         />
       ) : null}
 
