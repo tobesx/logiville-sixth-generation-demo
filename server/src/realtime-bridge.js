@@ -170,6 +170,11 @@ function handleMediaStream(twilioWs) {
           audio: {
             input: {
               format: { type: 'audio/pcmu' },
+              // Werknemers nemen op met de telefoon op tafel of in de auto, en
+              // dan hoort de microfoon de agent zelf terug. far_field filtert
+              // die galm vóór de VAD hem ziet, dus het scheelt niet alleen
+              // verstaanbaarheid maar ook valse beurtwissels.
+              noise_reduction: { type: 'far_field' },
               // Zonder transcription blijft input_audio_transcription.completed
               // stil en is niet na te gaan wat OpenAI werkelijk gehoord heeft.
               // language is vastgezet omdat Whisper anders op Duits gokte bij
@@ -321,6 +326,16 @@ function handleMediaStream(twilioWs) {
         } catch (e) {
           err(`classify_response parse error voor ${person.name}: ${e.message}`);
         }
+      }
+
+      // OpenAI echoot de aanvaarde sessie terug. Verschijnt hier iets anders
+      // dan wat we stuurden, dan is het veld genegeerd in plaats van toegepast.
+      if (event.type === 'session.updated') {
+        const input = event.session?.audio?.input ?? {};
+        log(
+          `sessie bevestigd — ruisonderdrukking: ${input.noise_reduction?.type ?? 'geen'}, `
+          + `beurtdetectie: ${input.turn_detection?.type ?? 'geen'}`
+        );
       }
 
       if (event.type === 'error') {
