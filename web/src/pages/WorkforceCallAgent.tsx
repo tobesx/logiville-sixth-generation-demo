@@ -715,7 +715,7 @@ export default function WorkforceCallAgent() {
 
       {passwordOpen ? (
         <PasswordGateModal
-          expected="admin"
+          expected="6666"
           onUnlock={() => {
             setSettingsUnlocked(true)
             setPasswordOpen(false)
