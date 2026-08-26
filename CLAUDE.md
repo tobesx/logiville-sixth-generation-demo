@@ -9,8 +9,8 @@ het antwoord.
 
 ```
 server/    Node/Express + WebSocket. Live op Railway. Draait in productie.
-web/       Vite + React frontend. Migratie uit Retool — nog leeg.
-shared/    Types en constanten die server en web delen — nog leeg.
+web/       Vite + React frontend. Uit Retool gehaald. Draait lokaal.
+shared/    Types en constanten die server en web delen.
 ```
 
 `server/` draaide tot 26 augustus 2026 als losse repo met de servercode in de
@@ -93,25 +93,38 @@ hier laat calls wel starten maar de audio stilvallen.
 `DATABASE_URL` hoort een referentie naar de Postgres-service te zijn
 (`${{Postgres.DATABASE_URL}}`), geen gekopieerde string.
 
-## Frontend-migratie
+## Web
 
-De bron is de Retool R2-app `Sixth Generation - Logiville Demo Launcher - Toby`
-(`5ec46a2a-9fab-11f1-854a-e74093bef73e`), uit te lezen via de Retool MCP-tools.
-Ongeveer 9.000 regels over 52 bestanden.
+Gemigreerd uit de Retool R2-app `Sixth Generation - Logiville Demo Launcher -
+Toby` (`5ec46a2a-9fab-11f1-854a-e74093bef73e`), 26 augustus 2026. De Retool-app
+blijft staan maar is niet langer de bron. Zie `web/README.md` voor het draaien.
 
-Wat er speelt:
+Wat er bij de migratie is vervangen — dit waren de enige Retool-koppelingen:
 
-- De hele Retool-koppeling is één regel in `/backend/ico/apiClient.ts`. De vier
-  functies eronder zijn samen 130 regels en worden een `fetch`-client.
-- `App.tsx` gebruikt al React Router; routing verhuist ongewijzigd.
-- Van de vier demo's in `demos.ts` zijn er twee echt gebouwd: Workforce Call
-  Agent en Demand Forecasting.
-- `Planning.tsx`, `People.tsx` en `ico.css` zitten niet in de routes en zijn
-  vermoedelijk vervangen door `WorkforceCallAgent.tsx`. Verifiëren voor je ze
-  weggooit.
-- De Base URL van de backend staat in de Retool resource-config, niet in code.
-  Die moet naar `VITE_API_BASE_URL`.
-- `PasswordGateModal.tsx` is een demo-poort, geen authenticatie.
+| Was | Is |
+|---|---|
+| `hooks/backend/ico` (`useCreateRun`, `useGetRun`, `useStartOutboundCall`) | `web/src/lib/api.ts`, gewone `fetch` |
+| `lib/shadcn/*` (Retool-scaffolding, niet leesbaar via de MCP-tools) | `web/src/lib/shadcn/*`, standaard shadcn/ui |
+| Logo op `sixth.partners.retool.com/api/file/…` | `web/public/sixth-generation-logo.png` |
+| Base URL in de Retool resource-config | `VITE_API_BASE_URL` |
+
+De Retool-hooks gaven `trigger(params, opts).result` terug; die vorm is niet
+nagebouwd. `web/src/lib/api.ts` heeft gewone async functies, en `creatingRun` in
+`Planning.tsx` is een eigen `useState` geworden.
+
+`shared/` is nu de bron voor `CallClassification`, `RunCall`, `RunStatus`,
+`Worker` en de stemmenlijst. `web/src/pages/types.ts` is een re-export, zodat de
+bestaande imports intact bleven. `server/` is CommonJS en importeert er nog
+niets uit — `server/src/db.js` en `server/src/realtime-bridge.js` blijven daar
+de feitelijke bron van waarheid, dus wijzigingen daar moeten hand in hand met
+`shared/`.
+
+Nog niet opgeruimd, bewust: `Planning.tsx`, `People.tsx` en
+`components/StarterCanvas.tsx` zitten niet in de routes maar zijn wel
+meegemigreerd, zodat de Retool-app eerst compleet overkwam. Planning dupliceert
+de belflow van `WorkforceCallAgent.tsx`; People is CRUD op de
+localStorage-werknemers. Alleen zij gebruiken de shadcn-componenten `dialog`,
+`input`, `label`, `table`, `progress`, `select`, `switch` en `button`.
 
 Multi-tenant is buiten scope. Er bestaan drie andere gebrande varianten in
 Retool (Get Driven, Port Of Antwerp, en een losse Sixth Generation Call Agent);
@@ -121,8 +134,8 @@ die blijven waar ze zijn.
 
 - **De API heeft geen authenticatie** en `cors()` draait zonder opties. Wie de
   Railway-URL kent kan telefoongesprekken starten naar willekeurige nummers.
-  Dit moet gedicht zijn voordat de Retool-app uitgaat, want Retool levert nu de
-  enige toegangscontrole die er is.
+  Dit blokkeert de deploy van `web/`: Retool leverde tot nu toe de enige
+  toegangscontrole die er was, en die valt weg zodra de Vite-app live gaat.
 - Twilio-webhooks worden niet geverifieerd; de SDK heeft `validateRequest`.
 - De werknemerslijst zit als seed-data in de frontend. Er komt een `people`-tabel.
 - Het Twilio-nummer wijst voor inkomende calls nog naar een dode host.

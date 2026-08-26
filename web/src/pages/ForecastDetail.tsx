@@ -1,0 +1,354 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Search, MoreHorizontal } from 'lucide-react'
+import ForecastTopbar from './forecast/ForecastTopbar'
+import ForecastSidebar from './forecast/ForecastSidebar'
+import ForecastGrid from './forecast/ForecastGrid'
+import ForecastChart from './forecast/ForecastChart'
+import ForecastDrivers from './forecast/ForecastDrivers'
+import {
+  CATEGORIES,
+  SKU_COUNT,
+  WEEK_LABELS,
+  buildSkus,
+  cellValue,
+  editKey,
+  fmt,
+  fmtPct,
+  isAlert,
+  type Category,
+  type Sku,
+} from './forecast/data'
+import './forecast/forecast.css'
+
+export default function ForecastDetail() {
+  const allSkus = useMemo(() => buildSkus(), [])
+
+  const [search, setSearch] = useState('')
+  const [activeCats, setActiveCats] = useState<Set<Category>>(new Set())
+  const [alertsOnly, setAlertsOnly] = useState(false)
+  const [edits, setEdits] = useState<Record<string, number>>({})
+  const [checked, setChecked] = useState<Set<string>>(new Set())
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
+  const [editingCell, setEditingCell] = useState<{ skuId: string; week: number } | null>(null)
+  const [confidenceOn, setConfidenceOn] = useState(true)
+  const [toast, setToast] = useState<string | null>(null)
+
+  const rowHasAlert = (sku: Sku) => WEEK_LABELS.some((_, w) => isAlert(sku, w, edits))
+
+  // search + alertsOnly filtered (used for category counts)
+  const preCatFiltered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return allSkus.filter((s) => {
+      if (q && !s.code.toLowerCase().includes(q) && !s.name.toLowerCase().includes(q)) return false
+      if (alertsOnly && !rowHasAlert(s)) return false
+      return true
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allSkus, search, alertsOnly, edits])
+
+  const filtered = useMemo(() => {
+    if (activeCats.size === 0) return preCatFiltered
+    return preCatFiltered.filter((s) => activeCats.has(s.category))
+  }, [preCatFiltered, activeCats])
+
+  const catCounts = useMemo(() => {
+    const map = new Map<Category, number>()
+    for (const c of CATEGORIES) map.set(c, 0)
+    for (const s of preCatFiltered) map.set(s.category, (map.get(s.category) ?? 0) + 1)
+    return map
+  }, [preCatFiltered])
+
+  // series across visible rows
+  const { forecast, adjusted, prevYear, budget } = useMemo(() => {
+    const f = new Array(16).fill(0)
+    const a = new Array(16).fill(0)
+    const p = new Array(16).fill(0)
+    const b = new Array(16).fill(0)
+    for (const s of filtered) {
+      for (let w = 0; w < 16; w++) {
+        f[w] += s.values[w] as number
+        a[w] += cellValue(s, w, edits)
+        p[w] += s.prevYear[w] as number
+        b[w] += s.budget[w] as number
+      }
+    }
+    return { forecast: f, adjusted: a, prevYear: p, budget: b }
+  }, [filtered, edits])
+
+  const colTotals = adjusted
+  const grandTotal = useMemo(() => colTotals.reduce((x, y) => x + y, 0), [colTotals])
+  const prevYearTotal = useMemo(() => prevYear.reduce((x, y) => x + y, 0), [prevYear])
+  const budgetTotal = useMemo(() => budget.reduce((x, y) => x + y, 0), [budget])
+
+  const vsLastYear = prevYearTotal > 0 ? ((grandTotal - prevYearTotal) / prevYearTotal) * 100 : 0
+  const vsBudget = budgetTotal > 0 ? ((grandTotal - budgetTotal) / budgetTotal) * 100 : 0
+
+  const editCount = Object.keys(edits).length
+  const hasEdits = editCount > 0
+
+  const statusText =
+    selectedWeek !== null
+      ? `Week ${WEEK_LABELS[selectedWeek]} selected · ${fmt(colTotals[selectedWeek] ?? 0)} units`
+      : editCount > 0
+        ? `${editCount} cell${editCount === 1 ? '' : 's'} adjusted`
+        : 'No selection'
+
+  const subtitle = useMemo(() => {
+    const cats = activeCats.size === 0 ? 'All categories' : Array.from(activeCats).join(', ')
+    return `${cats} · ${filtered.length} SKUs · 16 weeks`
+  }, [activeCats, filtered.length])
+
+  const insight = useMemo(() => {
+    if (filtered.length === 0) return 'No SKUs match the current filters.'
+    const avgWeek = grandTotal / 16
+    let minWeek = 0
+    for (let w = 1; w < 16; w++) if ((colTotals[w] ?? 0) < (colTotals[minWeek] ?? 0)) minWeek = w
+    const dropPct = avgWeek > 0 ? ((avgWeek - (colTotals[minWeek] ?? 0)) / avgWeek) * 100 : 0
+    const pyWeek = prevYear[minWeek] ?? 0
+    const vsPy = pyWeek > 0 ? (((colTotals[minWeek] ?? 0) - pyWeek) / pyWeek) * 100 : 0
+    return `Week ${WEEK_LABELS[minWeek]} drops ${Math.round(dropPct)} % below the horizon average across ${filtered.length} SKUs. Against last year the same week sits at ${fmtPct(vsPy)}.`
+  }, [filtered.length, grandTotal, colTotals, prevYear])
+
+  // toast auto-dismiss
+  useEffect(() => {
+    if (!toast) return
+    const t = window.setTimeout(() => setToast(null), 2600)
+    return () => window.clearTimeout(t)
+  }, [toast])
+
+  // handlers
+  const toggleCategory = (c: Category) =>
+    setActiveCats((prev) => {
+      const next = new Set(prev)
+      if (next.has(c)) next.delete(c)
+      else next.add(c)
+      return next
+    })
+
+  const toggleCheck = (id: string) =>
+    setChecked((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  const selectWeek = (w: number) => setSelectedWeek((prev) => (prev === w ? null : w))
+
+  const startEdit = (skuId: string, week: number) => setEditingCell({ skuId, week })
+  const cancelEdit = () => setEditingCell(null)
+
+  const commitEdit = (skuId: string, week: number, raw: string) => {
+    setEditingCell(null)
+    const trimmed = raw.trim()
+    if (trimmed === '') return
+    const parsed = Math.round(Number(trimmed))
+    if (!Number.isFinite(parsed) || parsed < 0) return
+    const sku = allSkus.find((s) => s.id === skuId)
+    if (!sku) return
+    const original = sku.values[week] as number
+    const key = editKey(skuId, week)
+    setEdits((prev) => {
+      const next = { ...prev }
+      if (parsed === original) delete next[key]
+      else next[key] = parsed
+      return next
+    })
+  }
+
+  const discard = () => setEdits({})
+
+  const save = () => {
+    if (!hasEdits) return
+    setToast(`${editCount} adjustment${editCount === 1 ? '' : 's'} saved to autumn-plan-w35`)
+  }
+
+  return (
+    <div className="fc-app">
+      <ForecastTopbar />
+
+      <div className="fc-body">
+        <ForecastSidebar />
+
+        <div className="fc-content">
+          {/* page header */}
+          <div style={{ padding: '26px 0 0', display: 'flex', alignItems: 'flex-start', gap: 24 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <span className="fc-badge">FORECAST DATA · AUTUMN-PLAN-W35</span>
+              <h1
+                className="fc-sat"
+                style={{
+                  fontSize: 33,
+                  lineHeight: 1.1,
+                  letterSpacing: '-0.01em',
+                  margin: '10px 0 8px',
+                  color: '#0A2540',
+                }}
+              >
+                Weekly quantities per SKU
+              </h1>
+              <div className="fc-meta" style={{ fontSize: 12.5, color: '#697386' }}>
+                <Meta label="Model" value="Northbay Retail v4" />
+                <Sep /> <Meta label="Algorithm" value="LightGBM" />
+                <Sep /> <Meta label="Horizon" value="16w" />
+                <Sep /> <Meta label="Accuracy" value="93.4 %" />
+                <Sep /> <Meta label="Status" value="Completed" />
+                <Sep /> <Meta label="Inputs" value="7 drivers" />
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              <span className={hasEdits ? 'fc-counter fc-counter-active' : 'fc-counter'}>
+                {hasEdits ? `${editCount} edit${editCount === 1 ? '' : 's'} pending` : 'No edits yet'}
+              </span>
+              <button type="button" className="fc-btn fc-btn-secondary" onClick={discard}>
+                Discard
+              </button>
+              <button
+                type="button"
+                className="fc-btn fc-btn-primary"
+                onClick={save}
+                disabled={!hasEdits}
+              >
+                Save adjustments
+              </button>
+              <button type="button" className="fc-icon-btn" aria-label="More options">
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* filter bar */}
+          <div
+            style={{
+              padding: '20px 0 0',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <div className="fc-filter-input">
+              <Search className="h-3.5 w-3.5" style={{ color: '#8792A2' }} />
+              <input
+                placeholder="Search SKU code or product name"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            {CATEGORIES.map((c) => {
+              const on = activeCats.has(c)
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  className={on ? 'fc-chip fc-chip-on' : 'fc-chip'}
+                  onClick={() => toggleCategory(c)}
+                >
+                  {c}
+                  <span className="fc-chip-count">{catCounts.get(c) ?? 0}</span>
+                </button>
+              )
+            })}
+
+            <span className="fc-vdiv" />
+            <button
+              type="button"
+              className={alertsOnly ? 'fc-chip fc-chip-alert-on' : 'fc-chip'}
+              onClick={() => setAlertsOnly((v) => !v)}
+            >
+              Alerts only
+            </button>
+
+            <div
+              style={{
+                marginLeft: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                fontSize: 12,
+                color: '#697386',
+              }}
+            >
+              <span className="fc-num">
+                Showing {filtered.length} of {SKU_COUNT} SKUs × 16 weeks
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span className="fc-legend-sw" style={{ background: '#635BFF' }} /> edited
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span className="fc-legend-sw" style={{ background: '#DF1B41' }} /> alert
+              </span>
+            </div>
+          </div>
+
+          {/* grid */}
+          <div style={{ padding: '20px 0 0' }}>
+            <ForecastGrid
+              skus={filtered}
+              edits={edits}
+              checked={checked}
+              selectedWeek={selectedWeek}
+              editingCell={editingCell}
+              statusText={statusText}
+              colTotals={colTotals}
+              grandTotal={grandTotal}
+              onToggleCheck={toggleCheck}
+              onSelectWeek={selectWeek}
+              onStartEdit={startEdit}
+              onCommit={commitEdit}
+              onCancel={cancelEdit}
+            />
+          </div>
+
+          {/* bottom row */}
+          <div className="fc-bottom" style={{ padding: '20px 0 32px' }}>
+            <ForecastChart
+              forecast={forecast}
+              adjusted={adjusted}
+              prevYear={prevYear}
+              budget={budget}
+              hasEdits={hasEdits}
+              confidenceOn={confidenceOn}
+              onToggleConfidence={() => setConfidenceOn((v) => !v)}
+              selectedWeek={selectedWeek}
+              subtitle={subtitle}
+              totalForecast={grandTotal}
+              vsLastYear={vsLastYear}
+              vsBudget={vsBudget}
+            />
+            <ForecastDrivers insight={insight} hasEdits={hasEdits} />
+          </div>
+        </div>
+      </div>
+
+      {toast ? (
+        <div className="fc-toast">
+          <span className="fc-toast-dot" />
+          {toast}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function Meta({ label, value }: { label: string; value: string }) {
+  return (
+    <span>
+      {label} <strong style={{ color: '#0A2540', fontWeight: 700 }}>{value}</strong>
+    </span>
+  )
+}
+
+function Sep() {
+  return <span style={{ color: '#CFD7E0', margin: '0 8px' }}>|</span>
+}

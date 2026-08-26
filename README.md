@@ -10,8 +10,8 @@ web/      Vite + React frontend
 shared/   Gedeelde types en constanten
 ```
 
-`server/` draait live op Railway en is in productie. De frontend wordt
-gemigreerd uit Retool.
+`server/` draait live op Railway en is in productie. `web/` is uit Retool
+gehaald en draait lokaal; deployen kan pas als de API authenticatie heeft.
 
 Zie [CLAUDE.md](CLAUDE.md) voor de architectuur, de belflow, en de
 Railway-instellingen die niet vanzelf spreken.

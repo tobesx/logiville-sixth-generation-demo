@@ -1,0 +1,155 @@
+/* Sixth Generation demo launcher — trade-show fullscreen experience */
+
+.launcher-root {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 15% 0%, rgba(237, 174, 73, 0.08) 0%, rgba(237, 174, 73, 0) 45%),
+    radial-gradient(90% 80% at 100% 100%, rgba(237, 174, 73, 0.05) 0%, rgba(237, 174, 73, 0) 50%),
+    var(--bg-deep);
+}
+
+/* Subtle technical grid pattern overlay */
+.launcher-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(120% 100% at 50% 0%, #000 40%, transparent 90%);
+  pointer-events: none;
+}
+
+.launcher-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+/* ---- Cards ---- */
+.demo-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-brand);
+  border-radius: 18px;
+  background: var(--bg-surface);
+  text-align: left;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    background-color 220ms ease;
+  will-change: transform;
+}
+
+.demo-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-soft);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+}
+
+.demo-card:focus-visible {
+  outline: 2px solid var(--accent-brand);
+  outline-offset: 3px;
+}
+
+.demo-card .demo-icon-wrap {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), color 220ms ease, background-color 220ms ease;
+}
+
+.demo-card:hover .demo-icon-wrap {
+  color: var(--accent-brand);
+  background: var(--accent-dim);
+}
+
+.demo-card .demo-cta {
+  transition: color 200ms ease, gap 200ms ease;
+}
+
+.demo-card:hover .demo-cta {
+  color: var(--accent-brand);
+}
+
+.demo-card:hover .demo-cta-arrow {
+  transform: translateX(5px);
+}
+
+.demo-cta-arrow {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---- Featured card ---- */
+.demo-card-featured {
+  border-color: rgba(237, 174, 73, 0.45);
+  background:
+    radial-gradient(90% 70% at 85% 100%, rgba(237, 174, 73, 0.14) 0%, rgba(237, 174, 73, 0) 60%),
+    linear-gradient(160deg, #1f1d1a 0%, var(--bg-surface) 55%);
+  box-shadow: 0 0 0 1px rgba(237, 174, 73, 0.12), 0 30px 60px rgba(0, 0, 0, 0.4);
+}
+
+.demo-card-featured:hover {
+  border-color: var(--accent-brand);
+  box-shadow: 0 0 0 1px rgba(237, 174, 73, 0.35), 0 40px 80px rgba(0, 0, 0, 0.5);
+}
+
+/* Ambient glow orb inside the featured card */
+.demo-card-featured::after {
+  content: '';
+  position: absolute;
+  right: -18%;
+  bottom: -28%;
+  width: 55%;
+  height: 70%;
+  background: radial-gradient(circle, rgba(237, 174, 73, 0.22) 0%, rgba(237, 174, 73, 0) 70%);
+  filter: blur(6px);
+  animation: launcherGlow 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes launcherGlow {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+
+.featured-outline-icon {
+  position: absolute;
+  right: -40px;
+  top: -30px;
+  color: rgba(237, 174, 73, 0.07);
+  pointer-events: none;
+}
+
+/* ---- Entrance animation ---- */
+@keyframes launcherRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.launcher-rise {
+  opacity: 0;
+  animation: launcherRise 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.launcher-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(237, 174, 73, 0.4);
+  border-radius: 999px;
+  background: var(--accent-dim);
+  padding: 5px 14px;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-brand);
+}
