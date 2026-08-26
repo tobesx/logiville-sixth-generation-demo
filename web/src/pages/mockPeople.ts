@@ -171,10 +171,13 @@ function buildOutcome(rng: () => number, shiftLabel: string): DemoOutcome {
  * placed through the real backend when live calls are enabled) followed by the
  * simulated workers, distributed across the logical {@link PLAN}.
  */
-export function buildDemoPeople(): DemoPerson[] {
+export function buildDemoPeople(roster: Worker[] = DEFAULT_WORKERS): DemoPerson[] {
   const rng = makeRng(20260601)
-  const realDennis = DEFAULT_WORKERS[0]
-  const realMichiel = DEFAULT_WORKERS[1]
+  // De eerste twee uit de `people`-tabel worden echt gebeld. Valt de tabel weg
+  // of is hij leeg, dan houdt DEFAULT_WORKERS de demo overeind.
+  const source = roster.length > 0 ? roster : DEFAULT_WORKERS
+  const realDennis = source[0]
+  const realMichiel = source[1]
 
   const dennis: DemoPerson = {
     id: realDennis?.id ?? '1',

@@ -8,14 +8,32 @@ const { VoiceResponse } = require('twilio').twiml;
 const { initiateCallSingle } = require('./orchestrator');
 const { handleStatus, handleAmd } = require('./call-handler');
 const { handleMediaStream } = require('./realtime-bridge');
+const { handleLogin, requireAuth } = require('./auth');
 const db = require('./db');
 
 const app = express();
-app.use(cors());
+
+// WEB_ORIGIN is een komma-gescheiden lijst; zonder waarde alleen de Vite
+// dev-server, zodat een vergeten variabele in productie niet stilzwijgend
+// iedereen binnenlaat.
+const allowedOrigins = (process.env.WEB_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- REST API (Retool) ---
+// --- Auth ---
+
+app.post('/api/auth/login', handleLogin);
+
+// Alles onder /api hierna vereist een token. De /voice/*-webhooks staan
+// bewust buiten deze middleware: die roept Twilio aan, niet de browser.
+app.use('/api', requireAuth);
+
+// --- REST API ---
 
 app.post('/api/runs', async (req, res) => {
   try {
@@ -61,6 +79,52 @@ app.post('/voice/start', (req, res) => {
   const stream = connect.stream({ url: wsUrl });
   stream.parameter({ name: 'personId', value: personId });
   res.type('text/xml').send(twiml.toString());
+});
+
+// --- People ---
+
+app.get('/api/people', async (req, res) => {
+  try {
+    res.json(await db.listPeople());
+  } catch (err) {
+    console.error('listPeople error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/people', async (req, res) => {
+  try {
+    const { name, phone, shift_start_at, shift_end_at } = req.body;
+    if (!name || !phone || !shift_start_at || !shift_end_at) {
+      return res.status(400).json({ error: 'name, phone, shift_start_at en shift_end_at zijn verplicht' });
+    }
+    res.status(201).json(await db.createPerson(req.body));
+  } catch (err) {
+    console.error('createPerson error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/people/:id', async (req, res) => {
+  try {
+    const person = await db.updatePerson(req.params.id, req.body);
+    if (!person) return res.status(404).json({ error: 'not found' });
+    res.json(person);
+  } catch (err) {
+    console.error('updatePerson error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/people/:id', async (req, res) => {
+  try {
+    const removed = await db.deletePerson(req.params.id);
+    if (!removed) return res.status(404).json({ error: 'not found' });
+    res.sendStatus(204);
+  } catch (err) {
+    console.error('deletePerson error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post('/voice/status', handleStatus);

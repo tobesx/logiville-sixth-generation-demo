@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, RotateCcw, Settings } from 'lucide-react'
+import { ArrowLeft, RotateCcw, Settings, Users } from 'lucide-react'
 import type { Phase } from '../wca'
 
 type AppTopBarProps = {
@@ -54,6 +54,10 @@ export default function AppTopBar({
           <span className="wca-tour-btn-dot" />
           {tourLabel}
         </button>
+        <Link to="/people" className="wca-topbar-pill">
+          <Users className="h-3.5 w-3.5" />
+          Werknemers
+        </Link>
         <button type="button" onClick={onSettings} className="wca-topbar-pill">
           <Settings className="h-3.5 w-3.5" />
           Settings

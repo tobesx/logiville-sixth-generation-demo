@@ -5,6 +5,9 @@ import { DEFAULT_VOICE } from '@shared'
 import type { RealtimeVoice } from '@shared'
 import { formatShiftForCall } from './shift'
 import { buildDemoPeople, createAddedPerson } from './mockPeople'
+import { DEFAULT_WORKERS } from './workers'
+import { listPeople } from '../lib/api'
+import type { Worker } from '@shared'
 import type { DemoPerson } from './mockPeople'
 import { buildLanes } from './gantt'
 import type { GanttLane } from './gantt'
@@ -84,9 +87,18 @@ function realStructured(call: RunCall): StructuredField[] {
 
 export default function WorkforceCallAgent() {
   const [addedPeople, setAddedPeople] = useState<DemoPerson[]>([])
+  // Het rooster komt uit de `people`-tabel; tot het binnen is draait de demo
+  // op DEFAULT_WORKERS, zodat de pagina niet leeg staat te wachten.
+  const [roster, setRoster] = useState<Worker[]>(DEFAULT_WORKERS)
+
+  useEffect(() => {
+    listPeople()
+      .then((rows) => rows.length > 0 && setRoster(rows))
+      .catch((err) => console.error('[people] ophalen mislukt:', err))
+  }, [])
   const [removedIds, setRemovedIds] = useState<string[]>([])
   const people = useMemo(
-    () => [...buildDemoPeople(), ...addedPeople].filter((p) => !removedIds.includes(p.id)),
+    () => [...buildDemoPeople(roster), ...addedPeople].filter((p) => !removedIds.includes(p.id)),
     [addedPeople, removedIds],
   )
   const mocks = useMemo(() => people.filter((p) => !p.real), [people])
