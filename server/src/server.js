@@ -8,7 +8,6 @@ const { VoiceResponse } = require('twilio').twiml;
 const { initiateCallSingle } = require('./orchestrator');
 const { handleStatus, handleAmd } = require('./call-handler');
 const { handleMediaStream } = require('./realtime-bridge');
-const { handleLogin, requireAuth } = require('./auth');
 const db = require('./db');
 
 const app = express();
@@ -24,14 +23,6 @@ const allowedOrigins = (process.env.WEB_ORIGIN || 'http://localhost:5173')
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// --- Auth ---
-
-app.post('/api/auth/login', handleLogin);
-
-// Alles onder /api hierna vereist een token. De /voice/*-webhooks staan
-// bewust buiten deze middleware: die roept Twilio aan, niet de browser.
-app.use('/api', requireAuth);
 
 // --- REST API ---
 
@@ -61,6 +52,15 @@ app.get('/api/runs/:runId', async (req, res) => {
 app.post('/api/outbound/call', async (req, res) => {
   try {
     const { person, runId } = req.body;
+
+    // De demo draait onbemand op een publiek scherm, dus deze route is in
+    // de praktijk openbaar. Alleen nummers uit het rooster mogen gebeld
+    // worden; anders kan iedereen die de URL kent willekeurig laten bellen.
+    if (!person?.phone || !(await db.personExistsByPhone(person.phone))) {
+      console.warn(`[SECURITY] geweigerd: ${person?.phone} staat niet in people`);
+      return res.status(403).json({ error: 'Nummer staat niet in het rooster' });
+    }
+
     const result = await initiateCallSingle(person, runId);
     res.json(result);
   } catch (err) {

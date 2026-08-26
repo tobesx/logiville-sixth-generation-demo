@@ -6,30 +6,19 @@
  * `VITE_API_BASE_URL`.
  */
 import type { CallPerson, RunStatus, Worker } from '@shared'
-import { getToken, notifyAuthExpired, setToken } from './auth'
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '')
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!BASE_URL) throw new Error('VITE_API_BASE_URL is niet ingesteld')
 
-  const token = getToken()
-
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   })
-
-  // Token verlopen of ingetrokken: opruimen en de gate laten heropenen, zodat
-  // de gebruiker niet tegen onverklaarbare foutmeldingen aanloopt.
-  if (response.status === 401 && path !== '/api/auth/login') {
-    notifyAuthExpired()
-    throw new Error('Sessie verlopen — log opnieuw in')
-  }
 
   if (!response.ok) {
     // De server geeft fouten als { error: string }; val terug op de status.
@@ -41,18 +30,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return (await response.json()) as T
-}
-
-/**
- * `POST /api/auth/login` — wisselt het gedeelde wachtwoord om voor een token.
- * De enige route die zonder token bereikbaar is.
- */
-export async function login(password: string): Promise<void> {
-  const { token } = await request<{ token: string }>('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ password }),
-  })
-  setToken(token)
 }
 
 export type CreateRunResponse = { runId: string }
@@ -107,16 +84,7 @@ export function updatePerson(id: string, changes: Partial<Omit<Worker, 'id'>>): 
 export async function deletePerson(id: string): Promise<void> {
   if (!BASE_URL) throw new Error('VITE_API_BASE_URL is niet ingesteld')
 
-  const token = getToken()
-  const response = await fetch(`${BASE_URL}/api/people/${id}`, {
-    method: 'DELETE',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  })
-
-  if (response.status === 401) {
-    notifyAuthExpired()
-    throw new Error('Sessie verlopen — log opnieuw in')
-  }
+  const response = await fetch(`${BASE_URL}/api/people/${id}`, { method: 'DELETE' })
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
 }
 

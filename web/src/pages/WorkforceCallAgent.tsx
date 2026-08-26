@@ -6,7 +6,7 @@ import type { RealtimeVoice } from '@shared'
 import { formatShiftForCall } from './shift'
 import { buildDemoPeople, createAddedPerson } from './mockPeople'
 import { DEFAULT_WORKERS } from './workers'
-import { listPeople } from '../lib/api'
+import { createPerson, deletePerson, listPeople } from '../lib/api'
 import type { Worker } from '@shared'
 import type { DemoPerson } from './mockPeople'
 import { buildLanes } from './gantt'
@@ -99,7 +99,7 @@ export default function WorkforceCallAgent() {
   const [removedIds, setRemovedIds] = useState<string[]>([])
   const people = useMemo(
     () => [...buildDemoPeople(roster), ...addedPeople].filter((p) => !removedIds.includes(p.id)),
-    [addedPeople, removedIds],
+    [roster, addedPeople, removedIds],
   )
   const mocks = useMemo(() => people.filter((p) => !p.real), [people])
   const realPeople = useMemo(() => people.filter((p) => p.real), [people])
@@ -432,17 +432,46 @@ export default function WorkforceCallAgent() {
     }
   }, [tourStep, phase])
 
-  const addPerson = (name: string, phone: string) => {
+  const addPerson = async (name: string, phone: string) => {
     if (phase !== 'idle') return
     const person = createAddedPerson(name.trim(), phone.trim())
+
+    // De server belt alleen nummers die in `people` staan, dus eerst opslaan.
+    // Mislukt dat, dan verschijnt de persoon niet: beter dan een rij die er
+    // wel staat maar niet gebeld kan worden.
+    try {
+      const saved = await createPerson({
+        name: person.name,
+        phone: person.phone,
+        shift_start_at: person.shift_start_at,
+        shift_end_at: person.shift_end_at,
+      })
+      person.id = saved.id
+    } catch (err) {
+      console.error('[people] opslaan mislukt:', err)
+      return
+    }
+
     setAddedPeople((current) => [...current, person])
     setStates((current) => ({ ...current, [person.id]: 'ready' }))
     setRealToggles((current) => ({ ...current, [person.id]: false }))
   }
 
-  const removePerson = (id: string) => {
+  const removePerson = async (id: string) => {
     if (phase !== 'idle') return
     setRemovedIds((current) => (current.includes(id) ? current : [...current, id]))
+
+    // Alleen echte rijen staan in de database; gesimuleerde mensen niet.
+    const person = people.find((p) => p.id === id)
+    if (!person?.real) return
+
+    try {
+      await deletePerson(id)
+      setRoster((current) => current.filter((p) => p.id !== id))
+    } catch (err) {
+      console.error('[people] verwijderen mislukt:', err)
+      setRemovedIds((current) => current.filter((existing) => existing !== id))
+    }
   }
 
   /* ---------- derived data ---------- */

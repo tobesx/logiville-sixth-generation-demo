@@ -94,6 +94,23 @@ async function seedPeopleIfEmpty() {
   console.log('[DB] people geseed met 2 werknemers');
 }
 
+/**
+ * Bestaat dit nummer in het rooster? Spaties en streepjes eruit, want de
+ * frontend levert ze soms mee en `+32 471 00 00 00` is hetzelfde nummer.
+ */
+async function personExistsByPhone(phone) {
+  const normalised = String(phone || '').replace(/[\s-]/g, '');
+  if (!normalised) return false;
+
+  const { rows } = await pool.query(
+    `SELECT 1 FROM people
+     WHERE REPLACE(REPLACE(phone, ' ', ''), '-', '') = $1
+     LIMIT 1`,
+    [normalised]
+  );
+  return rows.length > 0;
+}
+
 async function listPeople() {
   const { rows } = await pool.query(
     'SELECT * FROM people ORDER BY created_at ASC'
@@ -208,6 +225,7 @@ module.exports = {
   updateCallBySid,
   getRun,
   getCall,
+  personExistsByPhone,
   listPeople,
   createPerson,
   updatePerson,
