@@ -109,8 +109,7 @@ Wat er bij de migratie is vervangen — dit waren de enige Retool-koppelingen:
 | Base URL in de Retool resource-config | `VITE_API_BASE_URL` |
 
 De Retool-hooks gaven `trigger(params, opts).result` terug; die vorm is niet
-nagebouwd. `web/src/lib/api.ts` heeft gewone async functies, en `creatingRun` in
-`Planning.tsx` is een eigen `useState` geworden.
+nagebouwd. `web/src/lib/api.ts` heeft gewone async functies.
 
 `shared/` is nu de bron voor `CallClassification`, `RunCall`, `RunStatus`,
 `Worker` en de stemmenlijst. `web/src/pages/types.ts` is een re-export, zodat de
@@ -119,12 +118,23 @@ niets uit — `server/src/db.js` en `server/src/realtime-bridge.js` blijven daar
 de feitelijke bron van waarheid, dus wijzigingen daar moeten hand in hand met
 `shared/`.
 
-Nog niet opgeruimd, bewust: `Planning.tsx`, `People.tsx` en
-`components/StarterCanvas.tsx` zitten niet in de routes maar zijn wel
-meegemigreerd, zodat de Retool-app eerst compleet overkwam. Planning dupliceert
-de belflow van `WorkforceCallAgent.tsx`; People is CRUD op de
-localStorage-werknemers. Alleen zij gebruiken de shadcn-componenten `dialog`,
-`input`, `label`, `table`, `progress`, `select`, `switch` en `button`.
+De Retool-app kwam eerst compleet over; daarna is alles wat niet vanaf
+`main.tsx` bereikbaar was verwijderd. Weg: `Planning.tsx` (dupliceerde de
+belflow van `WorkforceCallAgent.tsx`), `People.tsx` (CRUD op de
+localStorage-werknemers), `StarterCanvas.tsx`, `OperationsShell.tsx`,
+`PreCallBriefing.tsx`, `BrandButton.tsx`, `StatusBadge.tsx`,
+`useTomorrowKey.ts`, en acht shadcn-componenten. Van shadcn resteren
+`checkbox` en `utils`.
+
+Daarmee is de localStorage-laag in `workers.ts` ook weg. `DEFAULT_WORKERS`
+houdt alleen Dennis en Michiel over — de twee die echt gebeld worden en die
+`mockPeople.ts` uitleest. De rest van het rooster is seed-data in
+`mockPeople.ts` en wordt gesimuleerd.
+
+Wat nog wél dood is: zo'n zeventien `ico-`classes in `ico.css` hebben geen
+gebruiker meer (`.ico-switch`, `.ico-table-head`, `.ico-worker-row`, alle
+`.ico-badge-*`). Bewust laten staan — classnames zijn strings, dus dode CSS is
+minder sluitend te bewijzen dan een dode import.
 
 Multi-tenant is buiten scope. Er bestaan drie andere gebrande varianten in
 Retool (Get Driven, Port Of Antwerp, en een losse Sixth Generation Call Agent);

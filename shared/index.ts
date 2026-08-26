@@ -1,7 +1,6 @@
 export type {
   CallClassification,
   CallPerson,
-  LastRunSummary,
   RunCall,
   RunStatus,
   Worker,

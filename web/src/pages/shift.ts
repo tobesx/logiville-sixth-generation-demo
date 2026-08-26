@@ -1,12 +1,5 @@
 import type { Worker } from './types'
 
-const dateFormatter = new Intl.DateTimeFormat('nl-BE', {
-  weekday: 'short',
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-})
-
 const compactDateFormatter = new Intl.DateTimeFormat('nl-BE', {
   day: '2-digit',
   month: '2-digit',
@@ -43,19 +36,19 @@ function setTomorrowWithTime(source: Date): Date {
   return tomorrow
 }
 
-export function toDateInputValue(date: Date): string {
+function toDateInputValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-export function toTimeInputValue(date: Date): string {
+function toTimeInputValue(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-export function toDatetimeLocalValue(date: Date): string {
+function toDatetimeLocalValue(date: Date): string {
   return `${toDateInputValue(date)}T${toTimeInputValue(date)}`
 }
 
-export function addDays(date: Date, days: number): Date {
+function addDays(date: Date, days: number): Date {
   const next = new Date(date)
   next.setDate(next.getDate() + days)
   return next
@@ -67,7 +60,7 @@ export function nextShiftDateTime(hour: number, minute = 0, dayOffset = 1): stri
   return toDatetimeLocalValue(addDays(date, dayOffset))
 }
 
-export function getPlannedShiftForTomorrow(worker: ShiftInterval): ShiftInterval {
+function getPlannedShiftForTomorrow(worker: ShiftInterval): ShiftInterval {
   const storedStart = coerceValidDate(worker.shift_start_at, 6)
   const storedEnd = coerceValidDate(worker.shift_end_at, 14)
   const start = setTomorrowWithTime(storedStart)
@@ -81,13 +74,6 @@ export function getPlannedShiftForTomorrow(worker: ShiftInterval): ShiftInterval
     shift_start_at: toDatetimeLocalValue(start),
     shift_end_at: toDatetimeLocalValue(end),
   }
-}
-
-export function formatShiftDate(worker: Worker): string {
-  const plannedShift = getPlannedShiftForTomorrow(worker)
-  const start = new Date(plannedShift.shift_start_at)
-  if (Number.isNaN(start.getTime())) return 'Invalid date'
-  return dateFormatter.format(start)
 }
 
 export function formatShiftTimeRange(worker: Worker): string {
@@ -117,26 +103,4 @@ export function formatShiftForCall(worker: Worker): string {
 
   if (sameDate) return `${startDate} ${startTime} - ${endTime}`
   return `${startDate} ${startTime} - ${compactDateFormatter.format(end)} ${endTime}`
-}
-
-export function buildShiftInterval(
-  dateValue: string,
-  startTimeValue: string,
-  endTimeValue: string,
-): Pick<Worker, 'shift_start_at' | 'shift_end_at'> | null {
-  if (!dateValue || !startTimeValue || !endTimeValue) return null
-
-  const start = new Date(`${dateValue}T${startTimeValue}`)
-  const end = new Date(`${dateValue}T${endTimeValue}`)
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null
-
-  if (end.getTime() === start.getTime()) return null
-  if (end.getTime() < start.getTime()) {
-    end.setDate(end.getDate() + 1)
-  }
-
-  return {
-    shift_start_at: toDatetimeLocalValue(start),
-    shift_end_at: toDatetimeLocalValue(end),
-  }
 }

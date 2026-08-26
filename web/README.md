@@ -41,12 +41,14 @@ omdat `shared/` buiten de Vite-root ligt.
   de echte backend; de rest blijft gesimuleerd.
 - **De demo-poort** is `PasswordGateModal` met wachtwoord `admin`. Dat is een
   drempel voor op de beursvloer, geen authenticatie.
-- **De werknemerslijst** is seed-data in `src/pages/workers.ts` en
-  `src/pages/mockPeople.ts`, met een localStorage-overlay. Er komt een
-  `people`-tabel.
-- **`Planning.tsx`, `People.tsx` en `components/StarterCanvas.tsx`** zitten niet
-  in de routes. Ze zijn bewust meegemigreerd zodat de Retool-app compleet
-  overkomt; opruimen is een aparte stap.
+- **De werknemerslijst** is seed-data. `src/pages/workers.ts` houdt Dennis en
+  Michiel — de twee die echt gebeld worden — en `src/pages/mockPeople.ts` bouwt
+  daar het gesimuleerde rooster omheen. Niets wordt bewaard tussen refreshes;
+  er komt een `people`-tabel.
+- **Alles wat niet vanaf `main.tsx` bereikbaar is, is weg.** `Planning.tsx`,
+  `People.tsx` en `StarterCanvas.tsx` kwamen mee uit Retool maar zaten niet in
+  de routes; die zijn na de migratie verwijderd, samen met de shadcn-
+  componenten die alleen zij gebruikten. Zie `CLAUDE.md` voor de volledige lijst.
 
 ## Railway
 

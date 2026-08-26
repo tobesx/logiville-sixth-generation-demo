@@ -41,11 +41,6 @@ export type Worker = {
   shift_end_at: string
 }
 
-export type LastRunSummary = {
-  confirmed: number
-  noAnswer: number
-}
-
 /** Persoon zoals `POST /api/outbound/call` die verwacht. */
 export type CallPerson = {
   id: string
