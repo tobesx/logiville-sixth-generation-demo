@@ -1,22 +1,17 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, RotateCcw, Settings } from 'lucide-react'
-import type { Phase } from '../wca'
+import { ArrowLeft, Settings } from 'lucide-react'
 
 type AppTopBarProps = {
-  phase: Phase
   tourRunning: boolean
   tourCompleted: boolean
   onStartTour: () => void
-  onReset: () => void
   onSettings: () => void
 }
 
 export default function AppTopBar({
-  phase,
   tourRunning,
   tourCompleted,
   onStartTour,
-  onReset,
   onSettings,
 }: AppTopBarProps) {
   const tourLabel = tourRunning
@@ -44,12 +39,6 @@ export default function AppTopBar({
       </div>
 
       <div className="flex items-center gap-2">
-        {phase !== 'idle' ? (
-          <button type="button" onClick={onReset} className="wca-topbar-pill">
-            <RotateCcw className="h-3.5 w-3.5" />
-            Reset
-          </button>
-        ) : null}
         <button type="button" onClick={onStartTour} className="wca-tour-btn">
           <span className="wca-tour-btn-dot" />
           {tourLabel}

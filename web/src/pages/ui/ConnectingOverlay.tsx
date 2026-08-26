@@ -6,9 +6,11 @@ type ConnectingOverlayProps = {
   step: number
   /** Total workers in the run, used for the final step copy. */
   total: number
+  /** Anker voor de rondleiding. */
+  dataTour?: string
 }
 
-export default function ConnectingOverlay({ step, total }: ConnectingOverlayProps) {
+export default function ConnectingOverlay({ step, total, dataTour }: ConnectingOverlayProps) {
   const steps = [
     'Connecting to HR system',
     'Retrieving phone numbers from HR system',
@@ -17,7 +19,7 @@ export default function ConnectingOverlay({ step, total }: ConnectingOverlayProp
 
   return (
     <div className="wca-overlay">
-      <div className="wca-overlay-card">
+      <div className="wca-overlay-card" data-tour={dataTour}>
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-brand)] bg-[var(--bg-deep)] text-[var(--accent-brand)]">
             <Server className="h-6 w-6" />

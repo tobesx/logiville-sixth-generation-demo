@@ -92,41 +92,6 @@ app.get('/api/people', async (req, res) => {
   }
 });
 
-app.post('/api/people', async (req, res) => {
-  try {
-    const { name, phone, shift_start_at, shift_end_at } = req.body;
-    if (!name || !phone || !shift_start_at || !shift_end_at) {
-      return res.status(400).json({ error: 'name, phone, shift_start_at en shift_end_at zijn verplicht' });
-    }
-    res.status(201).json(await db.createPerson(req.body));
-  } catch (err) {
-    console.error('createPerson error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.patch('/api/people/:id', async (req, res) => {
-  try {
-    const person = await db.updatePerson(req.params.id, req.body);
-    if (!person) return res.status(404).json({ error: 'not found' });
-    res.json(person);
-  } catch (err) {
-    console.error('updatePerson error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.delete('/api/people/:id', async (req, res) => {
-  try {
-    const removed = await db.deletePerson(req.params.id);
-    if (!removed) return res.status(404).json({ error: 'not found' });
-    res.sendStatus(204);
-  } catch (err) {
-    console.error('deletePerson error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 app.post('/voice/status', handleStatus);
 app.post('/voice/amd', handleAmd);
 

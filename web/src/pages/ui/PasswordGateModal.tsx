@@ -105,7 +105,7 @@ export default function PasswordGateModal({ expected, onUnlock, onClose }: Passw
           style={{ color: 'var(--danger-brand)', minHeight: 18 }}
           role="alert"
         >
-          {error ? 'Pincode incorrect' : ''}
+          {error ? 'Incorrect PIN' : ''}
         </p>
 
         <div className="mt-3 grid grid-cols-3 justify-items-center gap-3">

@@ -4,9 +4,9 @@ import { createRun, getRun, startOutboundCall } from '../lib/api'
 import { DEFAULT_VOICE } from '@shared'
 import type { RealtimeVoice } from '@shared'
 import { formatShiftForCall } from './shift'
-import { buildDemoPeople, createAddedPerson } from './mockPeople'
+import { buildDemoPeople } from './mockPeople'
 import { DEFAULT_WORKERS } from './workers'
-import { createPerson, deletePerson, listPeople } from '../lib/api'
+import { listPeople } from '../lib/api'
 import type { Worker } from '@shared'
 import type { DemoPerson } from './mockPeople'
 import { buildLanes } from './gantt'
@@ -20,12 +20,13 @@ import {
   CALL_MIN_MS,
   CONNECT_STEPS,
   CONNECT_STEP_MS,
+  TOUR_CONNECT_STEP_MS,
   RUN_FIRST_MS,
   RUN_WINDOW_MS,
   isFinalState,
   toneFromState,
 } from './wca'
-import type { CallState, ChipTone, DemoResult, Phase } from './wca'
+import type { CallState, DemoResult, Phase } from './wca'
 import GanttPlan from './ui/GanttPlan'
 import ResultsPanel from './ui/ResultsPanel'
 import type { ResultItem } from './ui/ResultsPanel'
@@ -86,7 +87,6 @@ function realStructured(call: RunCall): StructuredField[] {
 }
 
 export default function WorkforceCallAgent() {
-  const [addedPeople, setAddedPeople] = useState<DemoPerson[]>([])
   // Het rooster komt uit de `people`-tabel; tot het binnen is draait de demo
   // op DEFAULT_WORKERS, zodat de pagina niet leeg staat te wachten.
   const [roster, setRoster] = useState<Worker[]>(DEFAULT_WORKERS)
@@ -96,10 +96,9 @@ export default function WorkforceCallAgent() {
       .then((rows) => rows.length > 0 && setRoster(rows))
       .catch((err) => console.error('[people] ophalen mislukt:', err))
   }, [])
-  const [removedIds, setRemovedIds] = useState<string[]>([])
   const people = useMemo(
-    () => [...buildDemoPeople(roster), ...addedPeople].filter((p) => !removedIds.includes(p.id)),
-    [roster, addedPeople, removedIds],
+    () => buildDemoPeople(roster),
+    [roster],
   )
   const mocks = useMemo(() => people.filter((p) => !p.real), [people])
   const realPeople = useMemo(() => people.filter((p) => p.real), [people])
@@ -118,6 +117,8 @@ export default function WorkforceCallAgent() {
   const [runCount, setRunCount] = useState(0)
   const [runError, setRunError] = useState<string | null>(null)
   const [overlayStep, setOverlayStep] = useState<number | null>(null)
+  // Tijdens de rondleiding wacht het bellen op een klik in plaats van op een timer.
+  const pendingCallsRef = useRef<(() => void) | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedBlockKey, setSelectedBlockKey] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -366,17 +367,32 @@ export default function WorkforceCallAgent() {
     setPhase('running')
 
     // Modal "connecting to HR" overlay, three sequential steps, then dial.
+    // Tijdens de rondleiding trager, en de laatste stap blijft staan: de
+    // gids leest hem voor en klikt zelf door naar het bellen.
+    const guided = tourStep > 0
+    const stepMs = guided ? TOUR_CONNECT_STEP_MS : CONNECT_STEP_MS
+    const mockOnly = opts?.mockOnly ?? false
+
     setOverlayStep(0)
     for (let step = 1; step < CONNECT_STEPS; step += 1) {
-      timersRef.current.push(
-        window.setTimeout(() => setOverlayStep(step), CONNECT_STEP_MS * step),
-      )
+      timersRef.current.push(window.setTimeout(() => setOverlayStep(step), stepMs * step))
     }
+
+    if (guided) {
+      // Alle drie de regels afvinken en blijven staan; het bellen wacht op
+      // een klik in de rondleiding.
+      timersRef.current.push(
+        window.setTimeout(() => setOverlayStep(CONNECT_STEPS), stepMs * CONNECT_STEPS),
+      )
+      pendingCallsRef.current = () => beginCalls(active, mockOnly)
+      return
+    }
+
     timersRef.current.push(
       window.setTimeout(() => {
         setOverlayStep(null)
-        beginCalls(active, opts?.mockOnly ?? false)
-      }, CONNECT_STEP_MS * CONNECT_STEPS),
+        beginCalls(active, mockOnly)
+      }, stepMs * CONNECT_STEPS),
     )
   }
 
@@ -425,54 +441,14 @@ export default function WorkforceCallAgent() {
   }
 
   useEffect(() => {
-    if (tourStep === 5 && phase === 'running') setTourStep(6)
-    if (tourStep > 0 && phase === 'complete') {
-      setSelectedBlockKey(null)
-      setAnswersOpen(false)
-    }
+    // Ook vanaf stap 1: wie meteen op de knop drukt hoort niet te blijven
+    // lezen dat er nog niemand gebeld is.
+    if (tourStep > 0 && tourStep < 3 && phase === 'running') setTourStep(3)
+    if (tourStep === 4 && phase === 'complete') setTourStep(5)
+    // Drawer dicht, maar het antwoordenpaneel blijft open: stap 4 wijst naar
+    // de bovenste resultaatkaart, en die staat daarin.
+    if (tourStep > 0 && phase === 'complete') setSelectedBlockKey(null)
   }, [tourStep, phase])
-
-  const addPerson = async (name: string, phone: string) => {
-    if (phase !== 'idle') return
-    const person = createAddedPerson(name.trim(), phone.trim())
-
-    // De server belt alleen nummers die in `people` staan, dus eerst opslaan.
-    // Mislukt dat, dan verschijnt de persoon niet: beter dan een rij die er
-    // wel staat maar niet gebeld kan worden.
-    try {
-      const saved = await createPerson({
-        name: person.name,
-        phone: person.phone,
-        shift_start_at: person.shift_start_at,
-        shift_end_at: person.shift_end_at,
-      })
-      person.id = saved.id
-    } catch (err) {
-      console.error('[people] opslaan mislukt:', err)
-      return
-    }
-
-    setAddedPeople((current) => [...current, person])
-    setStates((current) => ({ ...current, [person.id]: 'ready' }))
-    setRealToggles((current) => ({ ...current, [person.id]: false }))
-  }
-
-  const removePerson = async (id: string) => {
-    if (phase !== 'idle') return
-    setRemovedIds((current) => (current.includes(id) ? current : [...current, id]))
-
-    // Alleen echte rijen staan in de database; gesimuleerde mensen niet.
-    const person = people.find((p) => p.id === id)
-    if (!person?.real) return
-
-    try {
-      await deletePerson(id)
-      setRoster((current) => current.filter((p) => p.id !== id))
-    } catch (err) {
-      console.error('[people] verwijderen mislukt:', err)
-      setRemovedIds((current) => current.filter((existing) => existing !== id))
-    }
-  }
 
   /* ---------- derived data ---------- */
   const resultFor = (person: DemoPerson): DemoResult => {
@@ -597,22 +573,13 @@ export default function WorkforceCallAgent() {
     return undefined
   }, [selectedBlockKey, lanes])
 
-  const statusFilters: { key: ChipTone; label: string; value: number; color: string }[] = [
-    { key: 'yes', label: 'Available', value: counts.available, color: 'var(--success-brand)' },
-    { key: 'no', label: 'Unavailable', value: counts.unavailable, color: 'var(--danger-brand)' },
-    { key: 'other', label: 'Action needed', value: counts.action, color: 'var(--warn-brand)' },
-    { key: 'noanswer', label: 'No answer', value: counts.noAnswer, color: 'var(--neutral-brand)' },
-  ]
-
   return (
     <div className="ico-app wca-root">
       <div className="flex h-full flex-col">
         <AppTopBar
-          phase={phase}
           tourRunning={tourStep > 0}
           tourCompleted={tourCompleted}
           onStartTour={startTour}
-          onReset={resetDemo}
           onSettings={() => (settingsUnlocked ? setSettingsOpen(true) : setPasswordOpen(true))}
         />
 
@@ -638,9 +605,8 @@ export default function WorkforceCallAgent() {
               resolvedCount={resolvedIds.length}
               answersOpen={answersOpen}
               onToggleAnswers={() => setAnswersOpen((prev) => !prev)}
-              gaps={gaps}
               onStart={handleStart}
-              onReplan={resetDemo}
+              onReset={resetDemo}
             />
 
             {runError ? (
@@ -649,41 +615,18 @@ export default function WorkforceCallAgent() {
               </div>
             ) : null}
 
-            {isRunning ? (
-              <div className="mt-3 shrink-0">
-                <RunStrip processed={resolvedIds.length} runCount={runCount} counts={counts} />
-              </div>
-            ) : null}
-
-            {isComplete ? (
-              <div className="wca-summary-strip mt-3 shrink-0" data-tour="result">
-                <span className="ico-heading text-[15px] font-bold text-[var(--text-white)]">
-                  Call run completed
-                </span>
-                <span className="wca-summary-item text-[var(--text-body)]">
-                  {runCount} workers contacted
-                </span>
-                {statusFilters.map((pill) => (
-                  <button
-                    key={pill.key}
-                    type="button"
-                    onClick={() => setStatusFilter(statusFilter === pill.key ? 'all' : pill.key)}
-                    className={cn('wca-statpill', statusFilter === pill.key && 'wca-statpill-on')}
-                    style={{
-                      borderColor: `color-mix(in srgb, ${pill.color} 30%, transparent)`,
-                      background: `color-mix(in srgb, ${pill.color} 7%, transparent)`,
-                    }}
-                  >
-                    <span className="wca-statpill-dot" style={{ background: pill.color }} />
-                    {pill.label}
-                    <span className="wca-badge">{pill.value}</span>
-                  </button>
-                ))}
-                <span className="ml-auto max-w-[320px] text-right font-['IBM_Plex_Sans'] text-[12px] italic text-[var(--text-muted)]">
-                  A manual calling process has been transformed into structured workforce information.
-                </span>
-              </div>
-            ) : null}
+            <div className="mt-3 shrink-0" data-tour={isComplete ? 'result' : 'runstrip'}>
+              <RunStrip
+                state={isComplete ? 'complete' : isRunning ? 'running' : 'idle'}
+                processed={resolvedIds.length}
+                // Voor de run: precies de mensen die straks gebeld worden, dus
+                // zonder de echte nummers waarvan de live-toggle uit staat.
+                runCount={isRunning || isComplete ? runCount : activePeople.length}
+                counts={counts}
+                statusFilter={statusFilter}
+                onFilter={(key) => setStatusFilter(statusFilter === key ? 'all' : key)}
+              />
+            </div>
 
             <div className="wca-panel mt-3 mb-6 min-h-0 flex-1 overflow-hidden p-4">
               <GanttPlan
@@ -711,7 +654,9 @@ export default function WorkforceCallAgent() {
         </div>
       </div>
 
-      {overlayStep !== null ? <ConnectingOverlay step={overlayStep} total={rosterTotal} /> : null}
+      {overlayStep !== null ? (
+        <ConnectingOverlay step={overlayStep} total={rosterTotal} dataTour="hr" />
+      ) : null}
 
       {passwordOpen ? (
         <PasswordGateModal
@@ -731,8 +676,6 @@ export default function WorkforceCallAgent() {
           toggles={realToggles}
           disabled={phase !== 'idle'}
           onToggle={toggleReal}
-          onAddPerson={addPerson}
-          onRemovePerson={removePerson}
           onClose={() => {
             setSettingsOpen(false)
             setSettingsUnlocked(false)
@@ -776,18 +719,15 @@ export default function WorkforceCallAgent() {
         <PlanningTour
           step={tourStep}
           phase={phase}
-          plannedCount={activePeople.length}
-          laneCount={teams.length}
+          queuedCount={activePeople.length}
           runCount={runCount}
           gaps={gaps}
           onNext={() => setTourStep((s) => s + 1)}
-          onOpenShift={() => {
-            setSelectedBlockKey('Warehouse::early')
+          onStartCalls={() => {
+            setOverlayStep(null)
+            pendingCallsRef.current?.()
+            pendingCallsRef.current = null
             setTourStep(4)
-          }}
-          onCloseDrawer={() => {
-            setSelectedBlockKey(null)
-            setTourStep(5)
           }}
           onFinish={finishTour}
           onSkip={skipTour}

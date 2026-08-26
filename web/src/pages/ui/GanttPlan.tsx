@@ -121,17 +121,16 @@ function ShiftCard({
         <span className="wca-bar-title">
           {lane.team} · {block.shiftName}
         </span>
-        {phase === 'running' ? (
-          <span className="wca-bar-meta">
-            {resolved} / {total} answered
-          </span>
-        ) : null}
         {isComplete ? (
           <span className={cn('wca-verdict-pill', needsReplan ? 'wca-verdict-warn' : 'wca-verdict-ok')}>
             {needsReplan ? `${gaps} gaps · replanning needed` : 'Fully staffed'}
           </span>
         ) : null}
-        <span className="wca-count-pill">{total} planned</span>
+        {/* Hoeveel van deze ploeg de agent al gebeld heeft. "called" en niet
+            "answered": `resolved` telt ook de mensen die niet opnamen. */}
+        <span className="wca-count-pill">
+          {resolved}/{total} called
+        </span>
       </div>
 
       {phase !== 'idle' ? <LaneStatusBar counts={counts} total={total} /> : null}

@@ -118,37 +118,6 @@ async function listPeople() {
   return rows;
 }
 
-async function createPerson({ name, phone, shift_start_at, shift_end_at }) {
-  const { rows } = await pool.query(
-    `INSERT INTO people (name, phone, shift_start_at, shift_end_at)
-     VALUES ($1, $2, $3, $4)
-     RETURNING *`,
-    [name, phone, shift_start_at, shift_end_at]
-  );
-  return rows[0];
-}
-
-// Alleen meegestuurde velden wijzigen; COALESCE laat de rest staan.
-async function updatePerson(id, { name, phone, shift_start_at, shift_end_at }) {
-  const { rows } = await pool.query(
-    `UPDATE people
-     SET name           = COALESCE($2, name),
-         phone          = COALESCE($3, phone),
-         shift_start_at = COALESCE($4, shift_start_at),
-         shift_end_at   = COALESCE($5, shift_end_at),
-         updated_at     = NOW()
-     WHERE id = $1
-     RETURNING *`,
-    [id, name ?? null, phone ?? null, shift_start_at ?? null, shift_end_at ?? null]
-  );
-  return rows[0] || null;
-}
-
-async function deletePerson(id) {
-  const { rowCount } = await pool.query('DELETE FROM people WHERE id = $1', [id]);
-  return rowCount > 0;
-}
-
 async function createRun(total) {
   const { rows } = await pool.query(
     'INSERT INTO runs (total) VALUES ($1) RETURNING id',
@@ -227,7 +196,4 @@ module.exports = {
   getCall,
   personExistsByPhone,
   listPeople,
-  createPerson,
-  updatePerson,
-  deletePerson,
 };

@@ -8,27 +8,31 @@ type Rect = { top: number; left: number; w: number; h: number }
 type PlanningTourProps = {
   step: number
   phase: Phase
-  plannedCount: number
-  laneCount: number
+  /** Aantal calls dat klaarstaat voor de run begint. */
+  queuedCount: number
   runCount: number
   gaps: number
   onNext: () => void
-  onOpenShift: () => void
-  onCloseDrawer: () => void
+  /** Sluit de HR-overlay en zet het bellen in gang. */
+  onStartCalls: () => void
   onFinish: () => void
   onSkip: () => void
 }
 
+/**
+ * De rondleiding volgt wat de agent doet, niet hoe het planbord in elkaar zit.
+ * Vier haltes: wat staat er klaar, zet het in gang, kijk hoe de antwoorden
+ * binnenkomen, en wat hou je eraan over.
+ */
 const TARGET_BY_STEP: Record<number, string | null> = {
-  1: null,
-  2: 'lane',
-  3: 'block',
-  4: 'person',
-  5: 'call',
-  6: 'result',
+  1: 'runstrip',
+  2: 'call',
+  3: 'hr',
+  4: 'answers',
+  5: 'card',
 }
 
-const TOTAL_STEPS = 6
+const TOTAL_STEPS = 5
 
 function measure(selector: string | null): Rect | null {
   if (!selector) return null
@@ -52,13 +56,11 @@ function rectsDiffer(a: Rect | null, b: Rect | null): boolean {
 export default function PlanningTour({
   step,
   phase,
-  plannedCount,
-  laneCount,
+  queuedCount,
   runCount,
   gaps,
   onNext,
-  onOpenShift,
-  onCloseDrawer,
+  onStartCalls,
   onFinish,
   onSkip,
 }: PlanningTourProps) {
@@ -95,14 +97,13 @@ export default function PlanningTour({
     return () => window.removeEventListener('keydown', onKey)
   }, [onSkip])
 
-  const isIntro = step === 1
-  // Step 6 only shows a card once the run has completed; during running the
-  // user watches the real progress strip with no popup.
-  if (step === 6 && phase !== 'complete') return null
-  // For anchored steps we need the target; if it isn't there yet, wait.
-  if (!isIntro && !rect) return null
+  // Stap 3 en 4 horen bij de lopende run, stap 5 bij het resultaat.
+  if ((step === 3 || step === 4) && phase === 'idle') return null
+  if (step === 5 && phase !== 'complete') return null
+  // Wachten tot het anker er is; panelen schuiven in.
+  if (!rect) return null
 
-  const cardW = isIntro ? 440 : 360
+  const cardW = 380
   const vw = window.innerWidth
   const vh = window.innerHeight
 
@@ -110,7 +111,7 @@ export default function PlanningTour({
   let cardLeft = 0
   let spotStyle: CSSProperties | null = null
 
-  if (isIntro || !rect) {
+  if (!rect) {
     cardTop = Math.max(18, (vh - cardH) / 2)
     cardLeft = Math.max(18, (vw - cardW) / 2)
   } else {
@@ -121,22 +122,39 @@ export default function PlanningTour({
       height: rect.h + 16,
     }
     const below = rect.top + rect.h + 16
-    const flipAbove = below + cardH > vh - 18 && rect.top - 16 - cardH > 18
-    cardTop = flipAbove ? rect.top - 16 - cardH : below
-    const center = rect.left + rect.w / 2 - cardW / 2
-    cardLeft = Math.min(Math.max(18, center), vw - cardW - 18)
+    const above = rect.top - 16 - cardH
+    let beside = false
+
+    if (below + cardH <= vh - 18) {
+      cardTop = below
+    } else if (above > 18) {
+      cardTop = above
+    } else {
+      // Doel te hoog voor onder of boven — bijvoorbeeld een paneel over de
+      // volle schermhoogte. Dan ernaast, verticaal gecentreerd.
+      beside = true
+      cardTop = Math.max(18, Math.min((vh - cardH) / 2, vh - cardH - 18))
+    }
+
+    if (beside) {
+      const leftOfTarget = rect.left - cardW - 16
+      cardLeft =
+        leftOfTarget > 18 ? leftOfTarget : Math.min(rect.left + rect.w + 16, vw - cardW - 18)
+    } else {
+      const center = rect.left + rect.w / 2 - cardW / 2
+      cardLeft = Math.min(Math.max(18, center), vw - cardW - 18)
+    }
   }
 
-  const content = stepContent(step, { plannedCount, laneCount, runCount, gaps })
+  const content = stepContent(step, { queuedCount, runCount, gaps })
 
   return (
     <div className="wca-tour-layer">
-      {isIntro ? <div className="wca-tour-backdrop" /> : null}
       {spotStyle ? <div className="wca-tour-spot" style={spotStyle} /> : null}
 
       <div
         ref={cardRef}
-        className={isIntro ? 'wca-tour-card wca-tour-card-intro' : 'wca-tour-card'}
+        className="wca-tour-card"
         style={{ top: cardTop, left: cardLeft }}
       >
         <div className="wca-tour-eyebrow">
@@ -161,21 +179,16 @@ export default function PlanningTour({
             ))}
           </div>
 
-          {step === 5 ? (
+          {step === 2 ? (
+            // De gebruiker drukt zelf; stap 3 komt vanzelf zodra de HR-sync loopt.
             <span className="wca-tour-hint">↑ Click the button</span>
+          ) : step === 4 ? (
+            <span className="wca-tour-hint">Calling…</span>
           ) : (
             <button
               type="button"
               className="wca-tour-next"
-              onClick={
-                step === 1 || step === 2
-                  ? onNext
-                  : step === 3
-                    ? onOpenShift
-                    : step === 4
-                      ? onCloseDrawer
-                      : onFinish
-              }
+              onClick={step === 3 ? onStartCalls : step === 5 ? onFinish : onNext}
             >
               {content.button}
             </button>
@@ -188,43 +201,37 @@ export default function PlanningTour({
 
 function stepContent(
   step: number,
-  data: { plannedCount: number; laneCount: number; runCount: number; gaps: number },
+  data: { queuedCount: number; runCount: number; gaps: number },
 ): { title: string; body: string; button: string } {
   switch (step) {
     case 1:
       return {
-        title: 'Shift plan',
-        body: `Each row is a team and each bar a planned shift. Today ${data.plannedCount} workers are scheduled across ${data.laneCount} lanes. In five steps we'll show how the call agent works.`,
-        button: 'Start',
+        title: `${data.queuedCount} calls, one agent`,
+        body: `Nobody has been called yet. This is the workload waiting: ${data.queuedCount} people who each need a phone call about tomorrow's shift. The agent places them all at once.`,
+        button: 'Next',
       }
     case 2:
       return {
-        title: 'Team and shift window',
-        body: 'On the left you see the team and its shift window. Warehouse Early runs from 06:00 to 14:00.',
+        title: 'One click starts them all',
+        body: 'No call list, no queue, no planner on the phone for an hour. Press the button and every conversation starts in parallel.',
         button: 'Next',
       }
     case 3:
       return {
-        title: 'Shift block',
-        body: 'The bar shows the staffing and how many spots are still open. Click it for the full list.',
-        button: 'Open shift',
+        title: 'It pulls the numbers itself',
+        body: 'The agent syncs with the HR system first, so nobody copies a phone list into a spreadsheet. Anyone without a number on file is left out — they never get dialled.',
+        button: 'Start calling',
       }
     case 4:
       return {
-        title: 'Team member',
-        body: 'Per member you see status, phone number and the latest call result. Open spots are called by the agent.',
+        title: 'Answers come back while it runs',
+        body: 'Every finished call lands here in the worker’s own words, and the counters at the top move with them. Nobody is waiting for a callback.',
         button: 'Next',
-      }
-    case 5:
-      return {
-        title: 'Start the call agent',
-        body: 'This button starts the call run: the agent calls every member, asks about their availability and processes the answer into the plan.',
-        button: '',
       }
     default:
       return {
-        title: 'Call run result',
-        body: `All ${data.runCount} workers have been called. The status bar summarizes the result: who is available, who is not, and where planning needs to adjust. You can replan the ${data.gaps} open gaps right away.`,
+        title: 'A conversation becomes structured data',
+        body: `Each answer is classified as available, unavailable or needs follow-up, with the spoken reply kept verbatim underneath. That is what reaches the planner — ${data.runCount} conversations, and ${data.gaps} gaps to act on.`,
         button: 'Done',
       }
   }

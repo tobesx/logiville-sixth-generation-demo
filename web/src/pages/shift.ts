@@ -104,3 +104,26 @@ export function formatShiftForCall(worker: Worker): string {
   if (sameDate) return `${startDate} ${startTime} - ${endTime}`
   return `${startDate} ${startTime} - ${compactDateFormatter.format(end)} ${endTime}`
 }
+
+/**
+ * Spiegel van `hourToNL` in server/src/realtime-bridge.js. De agent spreekt
+ * Nederlands; het transcript in de UI is daar de vertaling van, dus het uur
+ * moet op dezelfde manier benoemd worden en niet als kloktijd.
+ */
+function hourToSpeech(hour: number): string {
+  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+  if (hour < 6) return `${h12} at night`
+  if (hour < 12) return `${h12} in the morning`
+  if (hour === 12) return '12 noon'
+  if (hour < 18) return `${h12} in the afternoon`
+  return `${h12} in the evening`
+}
+
+/** Zoals de agent de shift uitspreekt: "from 6 in the morning until 2 in the afternoon". */
+export function formatShiftForSpeech(worker: Worker): string {
+  const planned = getPlannedShiftForTomorrow(worker)
+  const start = new Date(planned.shift_start_at)
+  const end = new Date(planned.shift_end_at)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 'tomorrow'
+  return `from ${hourToSpeech(start.getHours())} until ${hourToSpeech(end.getHours())}`
+}

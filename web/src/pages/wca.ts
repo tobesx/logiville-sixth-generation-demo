@@ -54,6 +54,9 @@ export function isFinalState(state: CallState): boolean {
 /** Modal "connecting to HR" overlay: three steps then dismiss. */
 export const CONNECT_STEP_MS = 1000
 export const CONNECT_STEPS = 3
+
+/** In de rondleiding trager, zodat de gids elke stap kan benoemen. */
+export const TOUR_CONNECT_STEP_MS = 2000
 /** Total calling window — every call resolves inside this span. */
 export const RUN_WINDOW_MS = 22000
 /** First result never lands before this. */

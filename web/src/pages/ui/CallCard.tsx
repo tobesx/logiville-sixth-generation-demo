@@ -19,9 +19,11 @@ type CallCardProps = {
   result: DemoResult
   transcript: TranscriptLine[]
   onOpen?: () => void
+  /** Anker voor de rondleiding; alleen de bovenste kaart zet dit. */
+  dataTour?: string
 }
 
-export default function CallCard({ result, transcript, onOpen }: CallCardProps) {
+export default function CallCard({ result, transcript, onOpen, dataTour }: CallCardProps) {
   const [showTranscript, setShowTranscript] = useState(false)
   const meta = outcomeMeta[result.classification]
   const Icon = meta.icon
@@ -33,6 +35,7 @@ export default function CallCard({ result, transcript, onOpen }: CallCardProps) 
         result.real && 'wca-result-real',
         result.classification === 'OTHER' && 'wca-result-action',
       )}
+      data-tour={dataTour}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">

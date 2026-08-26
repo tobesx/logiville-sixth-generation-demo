@@ -28,7 +28,7 @@ export default function ResultsPanel({
   onClose,
 }: ResultsPanelProps) {
   return (
-    <aside className="wca-answers-panel ico-scrollbar">
+    <aside className="wca-answers-panel ico-scrollbar" data-tour="answers">
       <div className="wca-answers-header">
         <div className="flex items-center gap-2">
           {isComplete ? (
@@ -59,9 +59,10 @@ export default function ResultsPanel({
             Waiting for the first response…
           </div>
         ) : (
-          items.map((item) => (
+          items.map((item, index) => (
             <CallCard
               key={item.result.id}
+              dataTour={index === 0 ? 'card' : undefined}
               result={item.result}
               transcript={item.transcript}
               onOpen={() => onSelectWorker(item.person)}

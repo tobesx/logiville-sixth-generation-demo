@@ -248,31 +248,3 @@ export function buildDemoPeople(roster: Worker[] = DEFAULT_WORKERS): DemoPerson[
 
   return [dennis, michiel, ...mocks]
 }
-
-/**
- * Creates a manually-added person for the demo. Only a name and phone are
- * provided; the role defaults to Warehouse Operator and the person is always a
- * real (live-call) contact so it runs through the Call Tracker backend.
- */
-export function createAddedPerson(name: string, phone: string): DemoPerson {
-  const id = `added-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-  return {
-    id,
-    name,
-    phone,
-    shift_start_at: nextShiftDateTime(SHIFTS.early.start, 0, 1),
-    shift_end_at: nextShiftDateTime(SHIFTS.early.end, 0, 1),
-    role: 'Warehouse Operator',
-    real: true,
-    defaultEnabled: true,
-    outcome: {
-      answered: true,
-      classification: 'YES',
-      quote: null,
-      structured: [
-        { label: 'Availability', value: 'Available' },
-        { label: 'Shift', value: SHIFTS.early.label },
-      ],
-    },
-  }
-}

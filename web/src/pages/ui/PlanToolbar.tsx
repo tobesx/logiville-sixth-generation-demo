@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight, Download, MessagesSquare, PhoneOutgoing, Search } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Download, MessagesSquare, PhoneOutgoing, RotateCcw, Search } from 'lucide-react'
 import { cn } from '../../lib/shadcn/utils'
 import type { ChipTone, Phase } from '../wca'
 
@@ -20,9 +20,8 @@ type PlanToolbarProps = {
   resolvedCount: number
   answersOpen: boolean
   onToggleAnswers: () => void
-  gaps: number
   onStart: () => void
-  onReplan: () => void
+  onReset: () => void
 }
 
 function Dropdown({
@@ -89,9 +88,8 @@ export default function PlanToolbar({
   resolvedCount,
   answersOpen,
   onToggleAnswers,
-  gaps,
   onStart,
-  onReplan,
+  onReset,
 }: PlanToolbarProps) {
   const isRunning = phase === 'running'
   const isComplete = phase === 'complete'
@@ -154,8 +152,9 @@ export default function PlanToolbar({
               Export
               <ChevronDown className="h-3.5 w-3.5" />
             </button>
-            <button type="button" onClick={onReplan} className="wca-primary">
-              Replan {gaps} gaps
+            <button type="button" onClick={onReset} className="wca-primary">
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset demo
             </button>
           </>
         ) : isRunning ? (

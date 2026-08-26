@@ -64,30 +64,6 @@ export function listPeople(): Promise<Worker[]> {
   return request<Worker[]>('/api/people')
 }
 
-/** `POST /api/people` — voegt een werknemer toe. */
-export function createPerson(person: Omit<Worker, 'id'>): Promise<Worker> {
-  return request<Worker>('/api/people', {
-    method: 'POST',
-    body: JSON.stringify(person),
-  })
-}
-
-/** `PATCH /api/people/:id` — wijzigt alleen de meegestuurde velden. */
-export function updatePerson(id: string, changes: Partial<Omit<Worker, 'id'>>): Promise<Worker> {
-  return request<Worker>(`/api/people/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(changes),
-  })
-}
-
-/** `DELETE /api/people/:id`. Geeft 204 zonder body, dus geen JSON verwachten. */
-export async function deletePerson(id: string): Promise<void> {
-  if (!BASE_URL) throw new Error('VITE_API_BASE_URL is niet ingesteld')
-
-  const response = await fetch(`${BASE_URL}/api/people/${id}`, { method: 'DELETE' })
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
-}
-
 /** Belt een hele lijst parallel. */
 export function startRunCalls(
   people: CallPerson[],
