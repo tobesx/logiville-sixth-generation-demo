@@ -4,11 +4,12 @@ import { createRun, getRun, startOutboundCall } from '../lib/api'
 import { DEFAULT_VOICE } from '@shared'
 import type { RealtimeVoice } from '@shared'
 import { formatShiftForCall } from './shift'
-import { buildDemoPeople } from './mockPeople'
+import { buildDemoPeople, roleForLiveCaller } from './mockPeople'
 import { DEFAULT_WORKERS } from './workers'
 import { listPeople } from '../lib/api'
 import type { Worker } from '@shared'
 import type { DemoPerson } from './mockPeople'
+import type { DemoOutcome } from './demoScript'
 import { buildLanes } from './gantt'
 import type { GanttLane } from './gantt'
 import { buildTranscript } from './transcript'
@@ -67,6 +68,14 @@ function mulberry32(seed: number): () => number {
   }
 }
 
+/** Kandidaten hebben geen gescripte uitkomst: hun antwoord komt echt binnen. */
+const PLACEHOLDER_OUTCOME: DemoOutcome = {
+  answered: true,
+  classification: 'YES',
+  quote: null,
+  structured: [],
+}
+
 function makeReadyStates(people: DemoPerson[]): Record<string, CallState> {
   return Object.fromEntries(people.map((person) => [person.id, 'ready' as CallState]))
 }
@@ -96,22 +105,37 @@ export default function WorkforceCallAgent() {
       .then((rows) => rows.length > 0 && setRoster(rows))
       .catch((err) => console.error('[people] ophalen mislukt:', err))
   }, [])
-  const people = useMemo(
-    () => buildDemoPeople(roster),
+  // Kandidaten uit de `people`-tabel. Ze staan in de settings-modal met een
+  // schakelaar; pas als die aan staat vervangen ze een plek in het rooster.
+  const candidates = useMemo<DemoPerson[]>(
+    () =>
+      roster.map((worker, index) => ({
+        ...worker,
+        role: roleForLiveCaller(index),
+        real: true,
+        defaultEnabled: false,
+        outcome: PLACEHOLDER_OUTCOME,
+      })),
     [roster],
   )
-  const mocks = useMemo(() => people.filter((p) => !p.real), [people])
-  const realPeople = useMemo(() => people.filter((p) => p.real), [people])
-  const byId = useMemo(() => new Map(people.map((person) => [person.id, person])), [people])
   const realDefaults = useMemo(
-    () => Object.fromEntries(realPeople.map((p) => [p.id, false])),
-    [realPeople],
+    () => Object.fromEntries(candidates.map((p) => [p.id, false])),
+    [candidates],
   )
-  const baseLanes = useMemo(() => buildLanes(mocks), [mocks])
+  const [realToggles, setRealToggles] = useState<Record<string, boolean>>(realDefaults)
+
+  // Aangevinkte kandidaten vervangen plekken in Warehouse · Early, dus het
+  // rooster telt altijd MOCK_COUNT en de lanes hoeven niets bij te plakken.
+  const liveCallers = useMemo(
+    () => candidates.filter((p) => realToggles[p.id]),
+    [candidates, realToggles],
+  )
+  const people = useMemo(() => buildDemoPeople(liveCallers), [liveCallers])
+  const byId = useMemo(() => new Map(people.map((person) => [person.id, person])), [people])
+  const lanes = useMemo<GanttLane[]>(() => buildLanes(people), [people])
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [states, setStates] = useState<Record<string, CallState>>(() => makeReadyStates(people))
-  const [realToggles, setRealToggles] = useState<Record<string, boolean>>(realDefaults)
   const [resolvedIds, setResolvedIds] = useState<string[]>([])
   const [realCalls, setRealCalls] = useState<Record<string, RunCall>>({})
   const [runCount, setRunCount] = useState(0)
@@ -309,33 +333,8 @@ export default function WorkforceCallAgent() {
     })
   }
 
-  const activePeople = useMemo(
-    () => people.filter((person) => !person.real || (realToggles[person.id] ?? false)),
-    [people, realToggles],
-  )
-
-  const lanes = useMemo<GanttLane[]>(() => {
-    const enabledReal = realPeople.filter((p) => realToggles[p.id])
-    if (enabledReal.length === 0 || baseLanes.length === 0) return baseLanes
-    return baseLanes.map((lane, index) => {
-      if (index !== 0) return lane
-      const shifts =
-        lane.shifts.length > 0
-          ? lane.shifts.map((block, blockIndex) =>
-              blockIndex === 0
-                ? { ...block, workers: [...enabledReal, ...block.workers] }
-                : block,
-            )
-          : lane.shifts
-      return { ...lane, shifts, workers: [...enabledReal, ...lane.workers] }
-    })
-  }, [baseLanes, realPeople, realToggles])
-
-  const liveEnabledCount = useMemo(
-    () => realPeople.filter((p) => realToggles[p.id]).length,
-    [realPeople, realToggles],
-  )
-  void liveEnabledCount
+  // Alles in het rooster wordt gebeld; wie niet aangevinkt is, staat er niet in.
+  const activePeople = people
 
   const beginCalls = (active: DemoPerson[], mockOnly = false) => {
     const realActive = active.filter((person) => person.real)
@@ -672,7 +671,7 @@ export default function WorkforceCallAgent() {
 
       {settingsOpen ? (
         <DemoSettingsModal
-          realPeople={realPeople}
+          realPeople={candidates}
           toggles={realToggles}
           disabled={phase !== 'idle'}
           onToggle={toggleReal}

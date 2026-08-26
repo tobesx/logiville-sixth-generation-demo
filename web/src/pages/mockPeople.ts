@@ -1,6 +1,5 @@
 import type { Worker } from './types'
 import type { DemoOutcome } from './demoScript'
-import { DEFAULT_WORKERS } from './workers'
 import { nextShiftDateTime } from './shift'
 
 export type DemoPerson = Worker & {
@@ -70,7 +69,7 @@ const SHIFTS: Record<ShiftKey, ShiftPattern> = {
  *  - Planning: an office function that only works during the day (Early).
  */
 const PLAN: { team: TeamKey; shift: ShiftKey; count: number; fill: 'full' | 'mixed' }[] = [
-  { team: 'Warehouse', shift: 'early', count: 20, fill: 'mixed' },
+  { team: 'Warehouse', shift: 'early', count: 22, fill: 'mixed' },
   { team: 'Warehouse', shift: 'late', count: 18, fill: 'full' },
   { team: 'Dock', shift: 'early', count: 14, fill: 'full' },
   { team: 'Production', shift: 'late', count: 20, fill: 'mixed' },
@@ -79,6 +78,16 @@ const PLAN: { team: TeamKey; shift: ShiftKey; count: number; fill: 'full' | 'mix
 ]
 
 export const MOCK_COUNT = PLAN.reduce((sum, entry) => sum + entry.count, 0)
+
+/**
+ * Live bellers staan altijd in Warehouse · Early, dus krijgen ze een rol uit
+ * dat team. Op positie in het rooster, zodat dezelfde persoon altijd dezelfde
+ * rol houdt — ook nadat er iemand voor hem is bijgekomen.
+ */
+export function roleForLiveCaller(index: number): string {
+  const roles = TEAM_ROLES.Warehouse
+  return roles[index % roles.length] as string
+}
 
 const AVAILABLE_QUOTES = [
   'Yes, I can take the shift, no problem.',
@@ -171,53 +180,15 @@ function buildOutcome(rng: () => number, shiftLabel: string): DemoOutcome {
  * placed through the real backend when live calls are enabled) followed by the
  * simulated workers, distributed across the logical {@link PLAN}.
  */
-export function buildDemoPeople(roster: Worker[] = DEFAULT_WORKERS): DemoPerson[] {
+/**
+ * Bouwt het rooster: altijd exact MOCK_COUNT personen.
+ *
+ * Aangevinkte live bellers *vervangen* de eerste plekken in Warehouse · Early
+ * in plaats van erbij te komen. Zo blijft het totaal gelijk, blijven de
+ * blokgroottes kloppen, en staan de echte nummers altijd in dezelfde lane.
+ */
+export function buildDemoPeople(liveCallers: Worker[] = []): DemoPerson[] {
   const rng = makeRng(20260601)
-  // De eerste twee uit de `people`-tabel worden echt gebeld. Valt de tabel weg
-  // of is hij leeg, dan houdt DEFAULT_WORKERS de demo overeind.
-  const source = roster.length > 0 ? roster : DEFAULT_WORKERS
-  const realDennis = source[0]
-  const realMichiel = source[1]
-
-  const dennis: DemoPerson = {
-    id: realDennis?.id ?? '1',
-    name: realDennis?.name ?? 'Dennis De Reyer',
-    phone: realDennis?.phone ?? '+32474311413',
-    shift_start_at: nextShiftDateTime(SHIFTS.early.start),
-    shift_end_at: nextShiftDateTime(SHIFTS.early.end),
-    role: 'Forklift Operator',
-    real: true,
-    defaultEnabled: true,
-    outcome: {
-      answered: true,
-      classification: 'YES',
-      quote: "Yes, I can take the shift, no problem — I'll be there for the six o'clock start.",
-      structured: [
-        { label: 'Availability', value: 'Available' },
-        { label: 'Shift', value: SHIFTS.early.label },
-      ],
-    },
-  }
-
-  const michiel: DemoPerson = {
-    id: realMichiel?.id ?? '2',
-    name: realMichiel?.name ?? 'Michiel Schepers',
-    phone: realMichiel?.phone ?? '+32493197138',
-    shift_start_at: nextShiftDateTime(SHIFTS.late.start),
-    shift_end_at: nextShiftDateTime(SHIFTS.late.end),
-    role: 'Warehouse Operator',
-    real: true,
-    defaultEnabled: false,
-    outcome: {
-      answered: true,
-      classification: 'YES',
-      quote: 'Sure, count me in for the late shift — I’ll be there.',
-      structured: [
-        { label: 'Availability', value: 'Available' },
-        { label: 'Shift', value: SHIFTS.late.label },
-      ],
-    },
-  }
 
   const mocks: DemoPerson[] = []
   let index = 0
@@ -246,5 +217,35 @@ export function buildDemoPeople(roster: Worker[] = DEFAULT_WORKERS): DemoPerson[
     }
   }
 
-  return [dennis, michiel, ...mocks]
+  if (liveCallers.length === 0) return mocks
+
+  // Alleen plekken in Warehouse · Early worden overschreven; de rest van het
+  // plan blijft ongemoeid.
+  let taken = 0
+  return mocks.map((mock) => {
+    if (taken >= liveCallers.length) return mock
+    if (teamOfRole(mock.role) !== 'Warehouse') return mock
+    if (new Date(mock.shift_start_at).getHours() !== SHIFTS.early.start) return mock
+
+    const live = liveCallers[taken]
+    if (!live) return mock
+    const role = roleForLiveCaller(taken)
+    taken += 1
+    return {
+      ...mock,
+      id: live.id,
+      name: live.name,
+      phone: live.phone,
+      role,
+      real: true,
+      defaultEnabled: true,
+    }
+  })
+}
+
+function teamOfRole(role: string): TeamKey | null {
+  for (const [team, roles] of Object.entries(TEAM_ROLES)) {
+    if (roles.includes(role)) return team as TeamKey
+  }
+  return null
 }
