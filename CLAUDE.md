@@ -14,8 +14,10 @@ shared/    Types en constanten die server en web delen — nog leeg.
 ```
 
 `server/` draaide tot 26 augustus 2026 als losse repo met de servercode in de
-root. De GitHub-repo heet nog steeds `tobesx/Workforce_Call_Trackers`; alleen de
-lokale map en de interne structuur zijn gewijzigd.
+root, onder de naam `Workforce_Call_Trackers`. De repo is nu
+`tobesx/logiville-sixth-generation-demo`. GitHub redirect de oude URL, maar
+reken daar niet op — en maak nooit een nieuwe repo met de oude naam, want dat
+breekt de redirect.
 
 ## Server
 
