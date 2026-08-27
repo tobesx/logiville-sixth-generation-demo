@@ -1,12 +1,18 @@
 /* Workforce Call Agent — single-page trade-show showcase */
 
 /* =========================================================================
-   Scoped light theme — applies ONLY to the Workforce Call Agent page.
-   The shared ico.css tokens stay dark for the launcher / People / shell;
-   these overrides re-tint everything inside .ico-app.wca-root to a
-   Stripe-like light palette.
+   Scoped light theme — gedeeld door de demo-apps die op de ico-tokens
+   draaien: de Workforce Call Agent en Smart Production Planning. De launcher
+   en de shell houden de donkere tokens uit ico.css.
+
+   Ook de radius- en schaduwtokens staan alleen hier; een pagina die deze
+   scope niet meekrijgt, krijgt rechte hoeken en geen schaduw.
+
+   De topbar valt hier bewust buiten: die zet zelf #0B0B0B en blijft dus in
+   het donkere Sixth Generation-thema, ongeacht de body eronder.
    ========================================================================= */
-.ico-app.wca-root {
+.ico-app.wca-root,
+.ico-app.pp-root {
   /* surfaces */
   --bg-page: #F6F9FC;
   --bg-surface: #FFFFFF;

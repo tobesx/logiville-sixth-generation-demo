@@ -5,6 +5,7 @@
  */
 
 .pp-root {
+  position: relative;
   height: 100dvh;
   overflow: hidden;
   background: var(--bg-page);
@@ -252,11 +253,14 @@
   border: 1px solid currentColor;
 }
 
-/* Elk bronsysteem zijn eigen tint, zodat je in één oogopslag ziet waar het
-   plan gekeken heeft. */
-.pp-source-erp { color: var(--accent-brand); }
-.pp-source-wms { color: #6fc3c4; }
-.pp-source-hr  { color: #c79ad0; }
+/* Het bronsysteem is een label, geen signaal — de ernst draagt de kleur. Op de
+   lichte achtergrond zouden drie bronkleuren náást rood en amber een te bont
+   beeld geven, dus deze badges blijven neutraal. */
+.pp-source {
+  color: var(--text-muted);
+  background: var(--bg-sunken);
+  border-color: var(--border-brand);
+}
 
 .pp-sev {
   display: inline-flex;
