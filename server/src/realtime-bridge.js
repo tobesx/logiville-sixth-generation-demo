@@ -14,6 +14,10 @@ const DEFAULT_VOICE = 'alloy';
 // Vangnet: als de sluitingszin nooit komt, toch ophangen.
 const CLOSING_TIMEOUT_MS = 8000;
 
+// Vangnet voor de microfoon: blijft de openingsmark uit, dan toch openzetten.
+// Zonder dit zou een gemiste mark het gesprek doof maken.
+const MIC_OPEN_TIMEOUT_MS = 15000;
+
 // Twilio's AMD las een korte voicemailbegroeting als 'human'. Het transcript
 // van het eerste fragment is betrouwbaarder en is al na ~5 s binnen.
 // Bewust alleen zinnen die een werknemer nooit zou zeggen als antwoord op
@@ -127,12 +131,28 @@ function handleMediaStream(twilioWs) {
   let speechStartedAt = null;
   let streamStartedAt = null;
   let lastTranscript = null;
+  // Zolang de agent zijn vraag stelt gaat er geen audio naar OpenAI. Op
+  // luidspreker vangt de microfoon dan kamer- en lijnruis op, en daar maakt
+  // de keten woorden van: Whisper en het model verzonnen allebei een ander
+  // antwoord uit hetzelfde stuk stilte.
+  let micOpen = false;
+  let openingMarkSent = false;
+  let micTimer = null;
   function log(msg)  { console.log(`[REALTIME] ${msg}`); }
   function warn(msg) { console.warn(`[REALTIME] ${msg}`); }
   function err(msg)  { console.error(`[REALTIME] ${msg}`); }
 
   // Twilio echoot een mark pas terug als alle eerder verstuurde audio is
-  // afgespeeld. Die echo is het signaal om echt op te hangen.
+  // afgespeeld. Vandaar dat de vraag pas als uitgesproken telt wanneer de
+  // openingsmark terugkomt, en niet al wanneer OpenAI klaar is met genereren.
+  function openMic(reason) {
+    if (micOpen) return;
+    micOpen = true;
+    clearTimeout(micTimer);
+    log(`Microfoon open voor ${person?.name} (${reason})`);
+  }
+
+  // Dezelfde echo, maar dan als sein om echt op te hangen.
   function sendHangup(reason) {
     if (hangupSent || !streamSid) return;
     hangupSent = true;
@@ -234,6 +254,18 @@ function handleMediaStream(twilioWs) {
         }));
       }
 
+      // OpenAI is klaar met genereren, maar Twilio speelt de vraag nog af.
+      // De mark komt terug wanneer hij de lijn echt uit is; pas dan luisteren.
+      if (event.type === 'response.output_audio.done' && !openingMarkSent && streamSid) {
+        openingMarkSent = true;
+        twilioWs.send(JSON.stringify({
+          event: 'mark',
+          streamSid,
+          mark: { name: 'opening-done' },
+        }));
+        log(`Openingsvraag gegenereerd voor ${person.name}, wachten op afspelen`);
+      }
+
       // Alleen de losse sluitingsresponse telt; de function-call-response
       // heeft geen audio en een ander response_id.
       if (event.type === 'response.output_audio.done'
@@ -282,6 +314,13 @@ function handleMediaStream(twilioWs) {
 
       if (event.type === 'response.function_call_arguments.done' && event.name === 'classify_response') {
         log(`classify_response ontvangen voor ${person.name}: ${event.arguments}`);
+
+        // Voor de vraag is uitgesproken kan er geen antwoord op zijn. Kwam er
+        // toch een classificatie, dan is die gebouwd op ruis.
+        if (!micOpen) {
+          warn(`${person.name}: classificatie genegeerd, de vraag was nog niet uitgesproken`);
+          return;
+        }
 
         if (finalLogged) {
           warn(`${person.name}: classify_response al eerder verwerkt, genegeerd`);
@@ -375,12 +414,17 @@ function handleMediaStream(twilioWs) {
 
       sessions.set(callSid, { person, history: [], finalLogged: false });
       streamStartedAt = Date.now();
+      micTimer = setTimeout(() => openMic('vangnet, openingsmark bleef uit'), MIC_OPEN_TIMEOUT_MS);
       log(`Stream gestart: ${callSid} → ${person.name}`);
       connectToOpenAI();
     }
 
     if (msg.event === 'mark') {
       log(`Mark ontvangen van Twilio: ${msg.mark?.name}`);
+      if (msg.mark?.name === 'opening-done') {
+        openMic('openingsvraag uitgesproken');
+      }
+
       if (msg.mark?.name === 'hangup') {
         log(`Ophangen voor ${person?.name}...`);
         twilioClient.calls(callSid).update({ status: 'completed' })
@@ -389,7 +433,7 @@ function handleMediaStream(twilioWs) {
       }
     }
 
-    if (msg.event === 'media' && openAiWs?.readyState === WebSocket.OPEN) {
+    if (msg.event === 'media' && micOpen && openAiWs?.readyState === WebSocket.OPEN) {
       openAiWs.send(JSON.stringify({
         type: 'input_audio_buffer.append',
         audio: msg.media.payload,
@@ -399,6 +443,7 @@ function handleMediaStream(twilioWs) {
     if (msg.event === 'stop') {
       log(`Stream gestopt voor ${person?.name}`);
       clearTimeout(hangupTimer);
+      clearTimeout(micTimer);
       // AMD of de statuswebhook kan al geclassificeerd hebben; die uitkomst
       // niet overschrijven met een lege NO_ANSWER.
       const session = callSid ? sessions.get(callSid) : null;
@@ -418,6 +463,7 @@ function handleMediaStream(twilioWs) {
   twilioWs.on('close', () => {
     log(`Twilio WS gesloten voor ${person?.name}`);
     clearTimeout(hangupTimer);
+    clearTimeout(micTimer);
     openAiWs?.close();
   });
   twilioWs.on('error', (e) => {
