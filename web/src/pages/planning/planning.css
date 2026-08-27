@@ -1,0 +1,306 @@
+/*
+ * Smart Production Planning — alleen wat niet al in ico.css of workforce.css
+ * staat. Kleuren komen zonder uitzondering uit de tokens, zodat deze pagina
+ * meebeweegt als het thema wijzigt.
+ */
+
+.pp-root {
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-page);
+}
+
+/* ---------- het weekbord ---------- */
+
+.pp-board {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 720px;
+}
+
+.pp-board-head,
+.pp-row {
+  display: grid;
+  grid-template-columns: 148px 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.pp-board-head {
+  align-items: center;
+}
+
+.pp-board-corner {
+  display: block;
+}
+
+/* Zelfde verdeling én dezelfde gap als .pp-track, anders lopen de koppen naar
+   rechts toe uit de pas met de vakken eronder. */
+.pp-days {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.pp-day {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-left: 4px;
+}
+
+.pp-line {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding-right: 4px;
+}
+
+.pp-line-name {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-white);
+}
+
+.pp-line-cap {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pp-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  min-height: 84px;
+}
+
+/* Lege dagvakken; de orders liggen er met grid-column overheen. */
+.pp-slot {
+  grid-row: 1;
+  border-radius: var(--r-block);
+  border: 1px dashed var(--border-brand);
+  opacity: 0.45;
+}
+
+.pp-slot:nth-of-type(1) { grid-column: 1; }
+.pp-slot:nth-of-type(2) { grid-column: 2; }
+.pp-slot:nth-of-type(3) { grid-column: 3; }
+.pp-slot:nth-of-type(4) { grid-column: 4; }
+.pp-slot:nth-of-type(5) { grid-column: 5; }
+
+/* ---------- een order ---------- */
+
+.pp-order {
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+  text-align: left;
+  border-radius: var(--r-block);
+  border: 1px solid var(--border-brand);
+  background: var(--bg-surface);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.pp-order:hover {
+  border-color: var(--border-soft);
+}
+
+.pp-order-attention {
+  border-color: var(--accent-brand);
+  background: var(--accent-dim);
+}
+
+.pp-order-blocking {
+  border-color: var(--danger-brand);
+  background: var(--danger-dim);
+}
+
+.pp-order-selected {
+  box-shadow: 0 0 0 2px var(--accent-brand);
+}
+
+.pp-order-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--accent-brand);
+}
+
+.pp-order-blocking .pp-order-head {
+  color: var(--danger-brand);
+}
+
+.pp-order-product {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-white);
+  /* Een order van één dag is smal; afbreken over twee regels leest beter dan
+     "Bottle blen…". Daarna alsnog afkappen, zodat het blok niet uitrekt. */
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pp-order-customer {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  color: var(--text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-crew {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pp-crew-chip {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-brand);
+  white-space: nowrap;
+}
+
+/* ---------- aandachtspunten ---------- */
+
+.pp-flags {
+  display: flex;
+  width: 380px;
+  flex-shrink: 0;
+  flex-direction: column;
+  border: 1px solid var(--border-brand);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+
+.pp-flags-head {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-brand);
+}
+
+.pp-flags-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.pp-flag {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 11px;
+  text-align: left;
+  border-radius: var(--r-block);
+  border: 1px solid var(--border-brand);
+  background: var(--bg-deep);
+  cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.pp-flag:hover {
+  border-color: var(--border-soft);
+}
+
+.pp-flag-blocking {
+  border-left: 3px solid var(--danger-brand);
+}
+
+.pp-flag-selected {
+  box-shadow: 0 0 0 2px var(--accent-brand);
+}
+
+.pp-flag-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pp-source {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+}
+
+/* Elk bronsysteem zijn eigen tint, zodat je in één oogopslag ziet waar het
+   plan gekeken heeft. */
+.pp-source-erp { color: var(--accent-brand); }
+.pp-source-wms { color: #6fc3c4; }
+.pp-source-hr  { color: #c79ad0; }
+
+.pp-sev {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pp-sev-blocking { color: var(--danger-brand); }
+.pp-sev-attention { color: var(--accent-brand); }
+
+.pp-flag-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-white);
+  line-height: 1.3;
+}
+
+.pp-flag-detail {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  color: var(--text-body);
+  line-height: 1.4;
+}
+
+.pp-flag-suggestion {
+  display: flex;
+  gap: 6px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  color: var(--accent-brand);
+  line-height: 1.45;
+}
+
+.pp-flag-order {
+  margin-top: 1px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-brand);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
