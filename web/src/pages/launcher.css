@@ -4,7 +4,10 @@
   position: relative;
   height: 100vh;
   width: 100vw;
-  overflow: hidden;
+  /* Bij een lager scherm werd de featured kaart afgekapt zonder scrollpad. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background:
     radial-gradient(120% 90% at 15% 0%, rgba(237, 174, 73, 0.08) 0%, rgba(237, 174, 73, 0) 45%),
     radial-gradient(90% 80% at 100% 100%, rgba(237, 174, 73, 0.05) 0%, rgba(237, 174, 73, 0) 50%),

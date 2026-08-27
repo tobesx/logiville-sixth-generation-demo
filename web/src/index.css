@@ -11,3 +11,35 @@ body,
 body {
   margin: 0;
 }
+
+/* =========================================================================
+   Touchscreen. De demo wordt op een aanraakscherm gegeven, zonder muis en
+   zonder toetsenbord. Vegen moet dus overal scrollen waar iets overloopt.
+
+   Elke pagina stond op height:100vh met overflow:hidden. Op een groot scherm
+   viel dat niet op; op het touchscreen werd inhoud afgekapt zonder enige
+   manier om erbij te komen — vegen deed niets, want er was nergens iets dat
+   kon bewegen.
+   ========================================================================= */
+
+html,
+body {
+  /* Verticaal pannen expliciet toestaan; browsers op kiosk-schermen zetten
+     dit soms dicht wanneer de pagina op vaste hoogte staat. */
+  touch-action: pan-y;
+  overscroll-behavior-y: none;
+}
+
+/* Momentum-scrollen op iPadOS/Safari, en een veeg die het einde van een
+   paneel raakt mag niet de pagina eronder meetrekken. */
+[class*='overflow-auto'],
+[class*='overflow-y-auto'],
+.ico-scrollbar,
+.fc-content,
+.fc-grid-body,
+.wca-answers-body,
+.pp-flags-body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}

@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import { Check } from 'lucide-react'
 import {
   WEEK_LABELS,
@@ -16,70 +15,30 @@ type GridProps = {
   edits: Record<string, number>
   checked: Set<string>
   selectedWeek: number | null
-  editingCell: { skuId: string; week: number } | null
   statusText: string
   colTotals: number[]
   grandTotal: number
   onToggleCheck: (skuId: string) => void
   onSelectWeek: (week: number) => void
-  onStartEdit: (skuId: string, week: number) => void
-  onCommit: (skuId: string, week: number, raw: string) => void
-  onCancel: () => void
 }
 
-function CellInput({
-  initial,
-  onCommit,
-  onCancel,
-}: {
-  initial: number
-  onCommit: (raw: string) => void
-  onCancel: () => void
-}) {
-  const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    const el = ref.current
-    if (el) {
-      el.focus()
-      el.select()
-    }
-  }, [])
-  return (
-    <input
-      ref={ref}
-      className="fc-cell-input"
-      type="number"
-      defaultValue={initial}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onCommit((e.target as HTMLInputElement).value)
-        else if (e.key === 'Escape') onCancel()
-      }}
-      onBlur={(e) => onCommit(e.target.value)}
-    />
-  )
-}
 
 export default function ForecastGrid({
   skus,
   edits,
   checked,
   selectedWeek,
-  editingCell,
   statusText,
   colTotals,
   grandTotal,
   onToggleCheck,
   onSelectWeek,
-  onStartEdit,
-  onCommit,
-  onCancel,
 }: GridProps) {
   return (
     <section className="fc-card" style={{ overflow: 'hidden' }}>
       <div className="fc-grid-strip">
         <span>
-          <strong style={{ color: '#0A2540' }}>Click</strong> a cell to edit it,{' '}
-          <strong style={{ color: '#0A2540' }}>click a week</strong> to work on the whole column.
+          <strong style={{ color: '#0A2540' }}>Click a week</strong> to work on the whole column.
         </span>
         <span style={{ color: '#3C4257', fontWeight: 500 }}>{statusText}</span>
       </div>
@@ -124,22 +83,8 @@ export default function ForecastGrid({
                 const value = cellValue(sku, w, edits)
                 const alert = isAlert(sku, w, edits)
                 const edited = edits[editKey(sku.id, w)] !== undefined
-                const isEditing =
-                  editingCell !== null && editingCell.skuId === sku.id && editingCell.week === w
                 const selCol = selectedWeek === w
                 const alpha = 0.06 + 0.34 * (rMax > 0 ? value / rMax : 0)
-
-                if (isEditing) {
-                  return (
-                    <div key={w} className="fc-cell-wrap">
-                      <CellInput
-                        initial={value}
-                        onCommit={(raw) => onCommit(sku.id, w, raw)}
-                        onCancel={onCancel}
-                      />
-                    </div>
-                  )
-                }
 
                 const cls = ['fc-cell']
                 if (alert) cls.push('fc-cell-alert')
@@ -151,11 +96,7 @@ export default function ForecastGrid({
 
                 return (
                   <div key={w} className="fc-cell-wrap">
-                    <div
-                      className={cls.join(' ')}
-                      style={style}
-                      onClick={() => onStartEdit(sku.id, w)}
-                    >
+                    <div className={cls.join(' ')} style={style}>
                       {fmt(value)}
                     </div>
                   </div>

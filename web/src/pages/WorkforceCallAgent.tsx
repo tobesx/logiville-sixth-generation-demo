@@ -627,7 +627,7 @@ export default function WorkforceCallAgent() {
               />
             </div>
 
-            <div className="wca-panel mt-3 mb-6 min-h-0 flex-1 overflow-hidden p-4">
+            <div className="wca-panel mt-3 mb-6 min-h-0 flex-1 overflow-y-auto p-4">
               <GanttPlan
                 lanes={viewLanes}
                 getTone={getTone}

@@ -11,7 +11,6 @@ import {
   WEEK_LABELS,
   buildSkus,
   cellValue,
-  editKey,
   fmt,
   fmtPct,
   isAlert,
@@ -20,16 +19,22 @@ import {
 } from './forecast/data'
 import './forecast/forecast.css'
 
+/** Vaste lege bewerkingen — de grid is read-only, zie de opmerking hieronder. */
+const NO_EDITS: Record<string, number> = Object.freeze({})
+
 export default function ForecastDetail() {
   const allSkus = useMemo(() => buildSkus(), [])
 
   const [search, setSearch] = useState('')
   const [activeCats, setActiveCats] = useState<Set<Category>>(new Set())
   const [alertsOnly, setAlertsOnly] = useState(false)
-  const [edits, setEdits] = useState<Record<string, number>>({})
+  // De cellen zijn read-only: de demo draait op een touchscreen waar iemand
+  // per ongeluk een cel opent en er een cijfer in achterlaat dat de volgende
+  // bezoeker als echt leest. `edits` blijft bestaan omdat cellValue, isAlert
+  // en de grafiek het als parameter nemen — hij is alleen altijd leeg.
+  const edits: Record<string, number> = NO_EDITS
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
-  const [editingCell, setEditingCell] = useState<{ skuId: string; week: number } | null>(null)
   const [confidenceOn, setConfidenceOn] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -83,15 +88,10 @@ export default function ForecastDetail() {
   const vsLastYear = prevYearTotal > 0 ? ((grandTotal - prevYearTotal) / prevYearTotal) * 100 : 0
   const vsBudget = budgetTotal > 0 ? ((grandTotal - budgetTotal) / budgetTotal) * 100 : 0
 
-  const editCount = Object.keys(edits).length
-  const hasEdits = editCount > 0
-
   const statusText =
     selectedWeek !== null
       ? `Week ${WEEK_LABELS[selectedWeek]} selected · ${fmt(colTotals[selectedWeek] ?? 0)} units`
-      : editCount > 0
-        ? `${editCount} cell${editCount === 1 ? '' : 's'} adjusted`
-        : 'No selection'
+      : 'No selection'
 
   const subtitle = useMemo(() => {
     const cats = activeCats.size === 0 ? 'All categories' : Array.from(activeCats).join(', ')
@@ -135,33 +135,7 @@ export default function ForecastDetail() {
 
   const selectWeek = (w: number) => setSelectedWeek((prev) => (prev === w ? null : w))
 
-  const startEdit = (skuId: string, week: number) => setEditingCell({ skuId, week })
-  const cancelEdit = () => setEditingCell(null)
 
-  const commitEdit = (skuId: string, week: number, raw: string) => {
-    setEditingCell(null)
-    const trimmed = raw.trim()
-    if (trimmed === '') return
-    const parsed = Math.round(Number(trimmed))
-    if (!Number.isFinite(parsed) || parsed < 0) return
-    const sku = allSkus.find((s) => s.id === skuId)
-    if (!sku) return
-    const original = sku.values[week] as number
-    const key = editKey(skuId, week)
-    setEdits((prev) => {
-      const next = { ...prev }
-      if (parsed === original) delete next[key]
-      else next[key] = parsed
-      return next
-    })
-  }
-
-  const discard = () => setEdits({})
-
-  const save = () => {
-    if (!hasEdits) return
-    setToast(`${editCount} adjustment${editCount === 1 ? '' : 's'} saved to autumn-plan-w35`)
-  }
 
   return (
     <div className="fc-app">
@@ -206,20 +180,7 @@ export default function ForecastDetail() {
                 flexShrink: 0,
               }}
             >
-              <span className={hasEdits ? 'fc-counter fc-counter-active' : 'fc-counter'}>
-                {hasEdits ? `${editCount} edit${editCount === 1 ? '' : 's'} pending` : 'No edits yet'}
-              </span>
-              <button type="button" className="fc-btn fc-btn-secondary" onClick={discard}>
-                Discard
-              </button>
-              <button
-                type="button"
-                className="fc-btn fc-btn-primary"
-                onClick={save}
-                disabled={!hasEdits}
-              >
-                Save adjustments
-              </button>
+              <span className="fc-counter">Read-only</span>
               <button type="button" className="fc-icon-btn" aria-label="More options">
                 <MoreHorizontal className="h-4 w-4" />
               </button>
@@ -298,15 +259,11 @@ export default function ForecastDetail() {
               edits={edits}
               checked={checked}
               selectedWeek={selectedWeek}
-              editingCell={editingCell}
               statusText={statusText}
               colTotals={colTotals}
               grandTotal={grandTotal}
               onToggleCheck={toggleCheck}
               onSelectWeek={selectWeek}
-              onStartEdit={startEdit}
-              onCommit={commitEdit}
-              onCancel={cancelEdit}
             />
           </div>
 
@@ -317,7 +274,7 @@ export default function ForecastDetail() {
               adjusted={adjusted}
               prevYear={prevYear}
               budget={budget}
-              hasEdits={hasEdits}
+              hasEdits={false}
               confidenceOn={confidenceOn}
               onToggleConfidence={() => setConfidenceOn((v) => !v)}
               selectedWeek={selectedWeek}
@@ -326,7 +283,7 @@ export default function ForecastDetail() {
               vsLastYear={vsLastYear}
               vsBudget={vsBudget}
             />
-            <ForecastDrivers insight={insight} hasEdits={hasEdits} />
+            <ForecastDrivers insight={insight} hasEdits={false} />
           </div>
         </div>
       </div>
