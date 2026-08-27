@@ -15,6 +15,8 @@ type PlanningTourProps = {
   onNext: () => void
   /** Sluit de HR-overlay en zet het bellen in gang. */
   onStartCalls: () => void
+  /** Pas true als de HR-sync door alle stappen heen is. */
+  canStartCalls: boolean
   onFinish: () => void
   onSkip: () => void
 }
@@ -61,6 +63,7 @@ export default function PlanningTour({
   gaps,
   onNext,
   onStartCalls,
+  canStartCalls,
   onFinish,
   onSkip,
 }: PlanningTourProps) {
@@ -187,7 +190,10 @@ export default function PlanningTour({
           ) : (
             <button
               type="button"
-              className="wca-tour-next"
+              className="wca-tour-next disabled:cursor-not-allowed disabled:opacity-40"
+              // Bij stap 3 pas klikbaar als de HR-sync klaar is; anders belooft
+              // de knop iets terwijl er nog een regel staat te draaien.
+              disabled={step === 3 && !canStartCalls}
               onClick={step === 3 ? onStartCalls : step === 5 ? onFinish : onNext}
             >
               {content.button}

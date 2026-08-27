@@ -722,6 +722,7 @@ export default function WorkforceCallAgent() {
           runCount={runCount}
           gaps={gaps}
           onNext={() => setTourStep((s) => s + 1)}
+          canStartCalls={overlayStep !== null && overlayStep >= CONNECT_STEPS}
           onStartCalls={() => {
             setOverlayStep(null)
             pendingCallsRef.current?.()
