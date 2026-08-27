@@ -197,9 +197,15 @@ function handleMediaStream(twilioWs) {
               noise_reduction: { type: 'far_field' },
               // Zonder transcription blijft input_audio_transcription.completed
               // stil en is niet na te gaan wat OpenAI werkelijk gehoord heeft.
-              // language is vastgezet omdat Whisper anders op Duits gokte bij
-              // een Nederlands antwoord ("Ja, das passt perfekt für mich").
-              transcription: { model: 'whisper-1', language: 'nl' },
+              //
+              // whisper-1 vulde stilte op met plausibele flarden — "Allo, hoi."
+              // en "Bedankt." terwijl er niets gezegd was. Dit transcript is
+              // ons enige bewijsstuk bij een verkeerde classificatie, dus een
+              // model dat zelf invult is erger dan geen transcript.
+              // gpt-live-transcribe transcribeert terwijl er gesproken wordt in
+              // plaats van achteraf een brok audio te duiden, en neemt
+              // `languages` in het meervoud.
+              transcription: { model: 'gpt-live-transcribe', languages: ['nl'] },
               turn_detection: {
                 type: 'server_vad',
                 threshold: 0.85,
@@ -373,7 +379,8 @@ function handleMediaStream(twilioWs) {
         const input = event.session?.audio?.input ?? {};
         log(
           `sessie bevestigd — ruisonderdrukking: ${input.noise_reduction?.type ?? 'geen'}, `
-          + `beurtdetectie: ${input.turn_detection?.type ?? 'geen'}`
+          + `beurtdetectie: ${input.turn_detection?.type ?? 'geen'}, `
+          + `transcriptie: ${input.transcription?.model ?? 'geen'}`
         );
       }
 
