@@ -472,6 +472,9 @@ export default function WorkforceCallAgent() {
     // Drawer dicht, maar het antwoordenpaneel blijft open: stap 4 wijst naar
     // de bovenste resultaatkaart, en die staat daarin.
     if (tourStep > 0 && phase === 'complete') setSelectedBlockKey(null)
+    // Stap 5 wijst naar de balk en naar het plan eronder; het antwoordenpaneel
+    // dekt daar een derde van af en heeft zijn werk gedaan bij stap 4.
+    if (tourStep === 5) setAnswersOpen(false)
     // hasCalledAnswer hoort erbij: zonder die dependency draaide dit effect
     // niet op het moment dat het eerste gesprek binnenkwam, en bleef de
     // rondleiding op stap 3 hangen tot de hele run klaar was.

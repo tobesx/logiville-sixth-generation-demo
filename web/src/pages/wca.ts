@@ -62,8 +62,13 @@ export const CONNECT_STEP_MS = 1000
 export const CONNECT_STEPS = 3
 /** Total calling window — every call resolves inside this span. */
 export const RUN_WINDOW_MS = 22000
-/** First result never lands before this. */
-export const RUN_FIRST_MS = 2600
+/**
+ * Wanneer het eerste resultaat op zijn vroegst binnenkomt, gerekend vanaf het
+ * moment dat het bellen begint. Stond op 2600, en samen met de drie seconden
+ * HR-sync duurde het bijna zes seconden voor er iets te zien was — de
+ * rondleiding bleef al die tijd naar de knop wijzen die je al ingedrukt had.
+ */
+export const RUN_FIRST_MS = 400
 /** Range for how long a single (simulated) call stays "calling" before resolving. */
 export const CALL_MIN_MS = 2200
 export const CALL_MAX_MS = 5200
