@@ -140,6 +140,8 @@ export default function WorkforceCallAgent() {
    * De agent slaat deze mensen over: wat je al weet hoef je niet te bellen.
    */
   const [manual, setManual] = useState<Record<string, 'YES' | 'NO'>>({})
+  /** Ids waarvan een handmatige invoer een echte gespreksuitkomst overschrijft. */
+  const manualOverrodeRef = useRef<Set<string>>(new Set())
   const [resolvedIds, setResolvedIds] = useState<string[]>([])
   const [realCalls, setRealCalls] = useState<Record<string, RunCall>>({})
   const [runCount, setRunCount] = useState(0)
@@ -414,23 +416,40 @@ export default function WorkforceCallAgent() {
     setStatusFilter('all')
     setRealToggles(realDefaults)
     setManual({})
+    manualOverrodeRef.current = new Set()
     setStates(makeReadyStates(people))
   }
 
   /** Nogmaals dezelfde knop wist de invoer; anders is een misklik onherstelbaar. */
   const setManualStatus = (id: string, value: 'YES' | 'NO') => {
+    const clearing = manual[id] === value
+
+    // De boekhouding staat bewust hier en niet in een state-updater: React roept
+    // updaters meer dan eens aan, en dan wist de tweede aanroep wat de eerste
+    // net had onthouden.
+    const hadCall = manualOverrodeRef.current.has(id)
+    if (clearing) manualOverrodeRef.current.delete(id)
+    // Onthouden dat deze invoer een echte gespreksuitkomst overschrijft; wie
+    // hem daarna weer vrijgeeft moet dat gesprek terugkrijgen in plaats van uit
+    // de telling te vallen.
+    else if (!manual[id] && resolvedIds.includes(id)) manualOverrodeRef.current.add(id)
+
     setManual((current) => {
       const next = { ...current }
-      const clearing = next[id] === value
       if (clearing) delete next[id]
       else next[id] = value
-
-      setStates((prev) => ({ ...prev, [id]: clearing ? 'ready' : 'completed' }))
-      setResolvedIds((prev) =>
-        clearing ? prev.filter((x) => x !== id) : prev.includes(id) ? prev : [...prev, id],
-      )
       return next
     })
+    setStates((prev) => ({ ...prev, [id]: clearing && !hadCall ? 'ready' : 'completed' }))
+    setResolvedIds((prev) =>
+      clearing && hadCall
+        ? prev
+        : clearing
+          ? prev.filter((x) => x !== id)
+          : prev.includes(id)
+            ? prev
+            : [...prev, id],
+    )
   }
 
   const toggleReal = (id: string) => {
@@ -543,8 +562,12 @@ export default function WorkforceCallAgent() {
         }
       })
     return items.sort((a, b) => Number(b.result.real) - Number(a.result.real))
+    // `manual` hoort erbij: resultFor leest eruit. Zonder deze dependency
+    // herrekende dit niets wanneer je ná een run iemand met de hand aanpaste —
+    // die stond al in resolvedIds, dus er veranderde niets aan de deps en de
+    // cijfers in de balk bleven staan.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedIds, realCalls, byId])
+  }, [resolvedIds, realCalls, byId, manual])
 
   const counts = useMemo(() => {
     return {
