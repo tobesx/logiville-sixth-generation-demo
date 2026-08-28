@@ -1819,21 +1819,36 @@
   transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
 }
 
+/* De knop draagt de kleur van de status die hij zet, ook voordat je hem
+   indrukt. Aangeklikt wordt hij gevuld in plaats van omlijnd. */
 .wca-manual-btn-yes {
-  border-color: var(--success-brand);
-  background: color-mix(in srgb, var(--success-brand) 14%, transparent);
+  border-color: color-mix(in srgb, var(--success-brand) 55%, transparent);
   color: var(--success-brand);
 }
 
 .wca-manual-btn-no {
-  border-color: var(--danger-brand);
-  background: color-mix(in srgb, var(--danger-brand) 14%, transparent);
+  border-color: color-mix(in srgb, var(--danger-brand) 55%, transparent);
   color: var(--danger-brand);
 }
 
+.wca-manual-btn-yes[aria-pressed='true'] {
+  border-color: var(--success-brand);
+  background: color-mix(in srgb, var(--success-brand) 16%, transparent);
+}
+
+.wca-manual-btn-no[aria-pressed='true'] {
+  border-color: var(--danger-brand);
+  background: color-mix(in srgb, var(--danger-brand) 16%, transparent);
+}
+
 @media (hover: hover) {
-  .wca-manual-btn:hover {
-    border-color: var(--border-soft);
-    color: var(--text-white);
+  .wca-manual-btn-yes:hover {
+    border-color: var(--success-brand);
+    background: color-mix(in srgb, var(--success-brand) 10%, transparent);
+  }
+
+  .wca-manual-btn-no:hover {
+    border-color: var(--danger-brand);
+    background: color-mix(in srgb, var(--danger-brand) 10%, transparent);
   }
 }

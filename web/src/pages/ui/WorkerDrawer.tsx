@@ -128,7 +128,7 @@ export default function WorkerDrawer({
                 type="button"
                 onClick={() => onSetManual('YES')}
                 aria-pressed={manualValue === 'YES'}
-                className={cn('wca-manual-btn', manualValue === 'YES' && 'wca-manual-btn-yes')}
+                className="wca-manual-btn wca-manual-btn-yes"
               >
                 <Check className="h-4 w-4" strokeWidth={2.4} />
                 Available
@@ -137,7 +137,7 @@ export default function WorkerDrawer({
                 type="button"
                 onClick={() => onSetManual('NO')}
                 aria-pressed={manualValue === 'NO'}
-                className={cn('wca-manual-btn', manualValue === 'NO' && 'wca-manual-btn-no')}
+                className="wca-manual-btn wca-manual-btn-no"
               >
                 <X className="h-4 w-4" strokeWidth={2.4} />
                 Unavailable
