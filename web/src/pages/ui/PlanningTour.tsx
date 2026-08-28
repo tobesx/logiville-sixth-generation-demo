@@ -8,30 +8,33 @@ type Rect = { top: number; left: number; w: number; h: number }
 type PlanningTourProps = {
   step: number
   phase: Phase
-  /** Aantal calls dat klaarstaat voor de run begint. */
-  queuedCount: number
-  runCount: number
+  /** Iedereen die voor morgen ingepland staat. */
+  scheduled: number
+  /** Wie nog geen antwoord heeft, met de hand gezet of gebeld. */
+  stillToCall: number
+  /** Bevestigd beschikbaar. */
+  confirmed: number
+  /** Alles wat na de run nog aandacht vraagt. */
   gaps: number
+  /** De HR-overlay staat in beeld; dan heeft een kaart ernaast geen zin. */
+  overlayOpen: boolean
+  /** Er is minstens één gesprek afgerond, dus er staat een transcript. */
+  hasCalledAnswer: boolean
   onNext: () => void
-  /** Sluit de HR-overlay en zet het bellen in gang. */
-  onStartCalls: () => void
-  /** Pas true als de HR-sync door alle stappen heen is. */
-  canStartCalls: boolean
   onFinish: () => void
   onSkip: () => void
 }
 
 /**
- * De rondleiding volgt wat de agent doet, niet hoe het planbord in elkaar zit.
- * Vier haltes: wat staat er klaar, zet het in gang, kijk hoe de antwoorden
- * binnenkomen, en wat hou je eraan over.
+ * Vijf haltes: het plan, wat er nog te doen staat, waarvoor de agent dient,
+ * hoe één antwoord eruitziet, en wat de planner eraan overhoudt.
  */
 const TARGET_BY_STEP: Record<number, string | null> = {
-  1: 'runstrip',
-  2: 'call',
-  3: 'hr',
-  4: 'answers',
-  5: 'card',
+  1: 'plan',
+  2: 'runstrip',
+  3: 'call',
+  4: 'card',
+  5: 'result',
 }
 
 const TOTAL_STEPS = 5
@@ -67,12 +70,13 @@ function rectsDiffer(a: Rect | null, b: Rect | null): boolean {
 export default function PlanningTour({
   step,
   phase,
-  queuedCount,
-  runCount,
+  scheduled,
+  stillToCall,
+  confirmed,
   gaps,
+  overlayOpen,
+  hasCalledAnswer,
   onNext,
-  onStartCalls,
-  canStartCalls,
   onFinish,
   onSkip,
 }: PlanningTourProps) {
@@ -107,8 +111,11 @@ export default function PlanningTour({
     return () => window.removeEventListener('keydown', onKey)
   }, [onSkip])
 
-  // Stap 3 en 4 horen bij de lopende run, stap 5 bij het resultaat.
-  if ((step === 3 || step === 4) && phase === 'idle') return null
+  // De HR-overlay dekt het scherm; een kaart die naar de knop eronder wijst
+  // slaat dan nergens op.
+  if (step === 3 && overlayOpen) return null
+  // Stap 4 wijst naar het eerste transcript, dus die moet er zijn.
+  if (step === 4 && !hasCalledAnswer) return null
   if (step === 5 && phase !== 'complete') return null
   // Wachten tot het anker er is; panelen schuiven in.
   if (!rect) return null
@@ -156,7 +163,7 @@ export default function PlanningTour({
     }
   }
 
-  const content = stepContent(step, { queuedCount, runCount, gaps })
+  const content = stepContent(step, { scheduled, stillToCall, confirmed, gaps })
 
   return (
     <div className="wca-tour-layer">
@@ -189,19 +196,18 @@ export default function PlanningTour({
             ))}
           </div>
 
-          {step === 2 ? (
-            // De gebruiker drukt zelf; stap 3 komt vanzelf zodra de HR-sync loopt.
-            <span className="wca-tour-hint">↑ Click the button</span>
+          {step === 3 ? (
+            // De gebruiker drukt zelf op de knop; stap 4 komt zodra het eerste
+            // gesprek is afgerond.
+            <span className="wca-tour-hint">↑ Press the button</span>
           ) : step === 4 ? (
+            // Doorgaan zou naar het eindresultaat springen dat er nog niet is.
             <span className="wca-tour-hint">Calling…</span>
           ) : (
             <button
               type="button"
-              className="wca-tour-next disabled:cursor-not-allowed disabled:opacity-40"
-              // Bij stap 3 pas klikbaar als de HR-sync klaar is; anders belooft
-              // de knop iets terwijl er nog een regel staat te draaien.
-              disabled={step === 3 && !canStartCalls}
-              onClick={step === 3 ? onStartCalls : step === 5 ? onFinish : onNext}
+              className="wca-tour-next"
+              onClick={step === 5 ? onFinish : onNext}
             >
               {content.button}
             </button>
@@ -214,37 +220,37 @@ export default function PlanningTour({
 
 function stepContent(
   step: number,
-  data: { queuedCount: number; runCount: number; gaps: number },
+  data: { scheduled: number; stillToCall: number; confirmed: number; gaps: number },
 ): { title: string; body: string; button: string } {
   switch (step) {
     case 1:
       return {
-        title: `${data.queuedCount} calls, one agent`,
-        body: `Nobody has been called yet. This is the workload waiting: ${data.queuedCount} people who each need a phone call about tomorrow's shift. The agent places them all at once.`,
+        title: 'Tomorrow’s shift plan',
+        body: `Six teams across the early, late and night shifts, ${data.scheduled} people in total. On paper every seat is filled. In practice none of them has confirmed that they are coming.`,
         button: 'Next',
       }
     case 2:
       return {
-        title: 'One click starts them all',
-        body: 'No call list, no queue, no planner on the phone for an hour. Press the button and every conversation starts in parallel.',
+        title: `${data.stillToCall} still to reach`,
+        body: 'This row is the work, not the progress of anything. Every worker needs a yes or a no before the plan is worth acting on — recorded by hand or heard on the phone, it counts down either way.',
         button: 'Next',
       }
     case 3:
       return {
-        title: 'It pulls the numbers itself',
-        body: 'The agent syncs with the HR system first, so nobody copies a phone list into a spreadsheet. Anyone without a number on file is left out — they never get dialled.',
-        button: 'Start calling',
+        title: 'What the agent is for',
+        body: `Reaching ${data.stillToCall} people costs a planner an afternoon on the phone. The agent places every call at once, holds the conversation in Dutch, and turns each answer into availability.`,
+        button: 'Next',
       }
     case 4:
       return {
-        title: 'Answers come back while it runs',
-        body: 'Every finished call lands here in the worker’s own words, and the counters at the top move with them. Nobody is waiting for a callback.',
+        title: 'The answer, in their own words',
+        body: 'A finished call lands here with the spoken reply kept word for word, and the availability read out of it. Nothing is summarised away — the planner can always check what was actually said.',
         button: 'Next',
       }
     default:
       return {
-        title: 'A conversation becomes structured data',
-        body: `Each answer is classified as available, unavailable or needs follow-up, with the spoken reply kept verbatim underneath. That is what reaches the planner — ${data.runCount} conversations, and ${data.gaps} gaps to act on.`,
+        title: 'What the planner is left with',
+        body: `${data.confirmed} of ${data.scheduled} confirmed available and ${data.gaps} to follow up, each with the conversation behind it. An afternoon of phone calls became a plan you can act on.`,
         button: 'Done',
       }
   }

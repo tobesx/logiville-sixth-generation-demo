@@ -21,7 +21,6 @@ import {
   CALL_MIN_MS,
   CONNECT_STEPS,
   CONNECT_STEP_MS,
-  TOUR_CONNECT_STEP_MS,
   RUN_FIRST_MS,
   RUN_WINDOW_MS,
   isFinalState,
@@ -147,7 +146,6 @@ export default function WorkforceCallAgent() {
   const [runError, setRunError] = useState<string | null>(null)
   const [overlayStep, setOverlayStep] = useState<number | null>(null)
   // Tijdens de rondleiding wacht het bellen op een klik in plaats van op een timer.
-  const pendingCallsRef = useRef<(() => void) | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedBlockKey, setSelectedBlockKey] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -377,25 +375,15 @@ export default function WorkforceCallAgent() {
     setPhase('running')
 
     // Modal "connecting to HR" overlay, three sequential steps, then dial.
-    // Tijdens de rondleiding trager, en de laatste stap blijft staan: de
-    // gids leest hem voor en klikt zelf door naar het bellen.
-    const guided = tourStep > 0
-    const stepMs = guided ? TOUR_CONNECT_STEP_MS : CONNECT_STEP_MS
+    // Hield eerder de laatste stap vast zodat de rondleiding hem kon toelichten;
+    // die stap bestaat niet meer, en zonder iets dat hem weer losliet bleef de
+    // overlay hangen.
+    const stepMs = CONNECT_STEP_MS
     const mockOnly = opts?.mockOnly ?? false
 
     setOverlayStep(0)
     for (let step = 1; step < CONNECT_STEPS; step += 1) {
       timersRef.current.push(window.setTimeout(() => setOverlayStep(step), stepMs * step))
-    }
-
-    if (guided) {
-      // Alle drie de regels afvinken en blijven staan; het bellen wacht op
-      // een klik in de rondleiding.
-      timersRef.current.push(
-        window.setTimeout(() => setOverlayStep(CONNECT_STEPS), stepMs * CONNECT_STEPS),
-      )
-      pendingCallsRef.current = () => beginCalls(active, mockOnly)
-      return
     }
 
     timersRef.current.push(
@@ -458,25 +446,7 @@ export default function WorkforceCallAgent() {
     setTourStep(1)
   }
 
-  const skipTour = () => {
-    setTourStep(0)
-    // De rondleiding laat de HR-overlay bewust openstaan tot de gids op
-    // "Start calling" drukt. Wie daar wegklikte liet hem staan: schermvullend,
-    // zonder sluitknop, over de topbar heen. De demo was dan dood tot iemand
-    // de pagina herlaadde. De run is al gevraagd, dus we zetten hem door.
-    if (pendingCallsRef.current) {
-      // De resterende overlay-stappen staan nog als timers klaar. Zonder deze
-      // regel zetten die overlayStep meteen weer terug en stond de overlay er
-      // opnieuw. Eerst opruimen, dan bellen — beginCalls zet daarna zijn eigen
-      // timers neer.
-      timersRef.current.forEach((id) => window.clearTimeout(id))
-      timersRef.current = []
-      setOverlayStep(null)
-      const startCalls = pendingCallsRef.current
-      pendingCallsRef.current = null
-      startCalls()
-    }
-  }
+  const skipTour = () => setTourStep(0)
 
   const finishTour = () => {
     setTourStep(0)
@@ -485,21 +455,27 @@ export default function WorkforceCallAgent() {
     window.setTimeout(() => setTourToast(false), 5200)
   }
 
+  /** Een afgerond gesprek, niet iets wat de planner zelf heeft ingevuld. */
+  const hasCalledAnswer = resolvedIds.some((id) => !manual[id])
+
   useEffect(() => {
-    // Ook vanaf stap 1: wie meteen op de knop drukt hoort niet te blijven
-    // lezen dat er nog niemand gebeld is.
-    if (tourStep > 0 && tourStep < 3 && phase === 'running') setTourStep(3)
+    // Stap 4 zodra er een échte uitkomst binnen is. Handmatige invoer telt niet
+    // mee: die zet geen transcript op het scherm om naar te wijzen.
+    if (tourStep > 0 && tourStep < 4 && phase !== 'idle' && hasCalledAnswer) setTourStep(4)
     if (tourStep === 4 && phase === 'complete') setTourStep(5)
     // Stap 3 en 4 horen bij een lopende run, stap 5 bij het resultaat. Een
     // reset zet de fase terug en die stappen tekenen dan niets, terwijl de
     // topbar "Tour active" bleef melden — zonder toetsenbord kwam je daar niet
     // meer uit. Ongeldige stap betekent nu: rondleiding afgelopen.
-    if ((tourStep === 3 || tourStep === 4) && phase === 'idle') setTourStep(0)
+    if (tourStep === 4 && phase === 'idle') setTourStep(0)
     if (tourStep === 5 && phase !== 'complete') setTourStep(0)
     // Drawer dicht, maar het antwoordenpaneel blijft open: stap 4 wijst naar
     // de bovenste resultaatkaart, en die staat daarin.
     if (tourStep > 0 && phase === 'complete') setSelectedBlockKey(null)
-  }, [tourStep, phase])
+    // hasCalledAnswer hoort erbij: zonder die dependency draaide dit effect
+    // niet op het moment dat het eerste gesprek binnenkwam, en bleef de
+    // rondleiding op stap 3 hangen tot de hele run klaar was.
+  }, [tourStep, phase, hasCalledAnswer])
 
   /* ---------- derived data ---------- */
   const resultFor = (person: DemoPerson): DemoResult => {
@@ -604,6 +580,8 @@ export default function WorkforceCallAgent() {
     [activePeople, states],
   )
   const gaps = counts.unavailable + counts.action + counts.noAnswer
+  const stillToCall = Math.max(activePeople.length - resolvedIds.length, 0)
+  const hasManual = Object.keys(manual).length > 0
 
   const viewLanes = useMemo<GanttLane[]>(() => {
     const query = search.trim().toLowerCase()
@@ -679,6 +657,7 @@ export default function WorkforceCallAgent() {
               onToggleAnswers={() => setAnswersOpen((prev) => !prev)}
               onStart={handleStart}
               onReset={resetDemo}
+              hasManual={hasManual}
             />
 
             {runError ? (
@@ -701,7 +680,7 @@ export default function WorkforceCallAgent() {
               />
             </div>
 
-            <div className="wca-panel mt-3 mb-6 min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="wca-panel mt-3 mb-6 min-h-0 flex-1 overflow-y-auto p-4" data-tour="plan">
               <GanttPlan
                 lanes={viewLanes}
                 getTone={getTone}
@@ -802,17 +781,13 @@ export default function WorkforceCallAgent() {
         <PlanningTour
           step={tourStep}
           phase={phase}
-          queuedCount={activePeople.length}
-          runCount={runCount}
+          scheduled={activePeople.length}
+          stillToCall={stillToCall}
+          confirmed={counts.available}
           gaps={gaps}
+          overlayOpen={overlayStep !== null}
+          hasCalledAnswer={hasCalledAnswer}
           onNext={() => setTourStep((s) => s + 1)}
-          canStartCalls={overlayStep !== null && overlayStep >= CONNECT_STEPS}
-          onStartCalls={() => {
-            setOverlayStep(null)
-            pendingCallsRef.current?.()
-            pendingCallsRef.current = null
-            setTourStep(4)
-          }}
           onFinish={finishTour}
           onSkip={skipTour}
         />

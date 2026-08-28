@@ -27,6 +27,8 @@ export default function ResultsPanel({
   onSelectWorker,
   onClose,
 }: ResultsPanelProps) {
+  const firstCallId = items.find((item) => !item.result.manual)?.result.id
+
   return (
     <aside className="wca-answers-panel ico-scrollbar" data-tour="answers">
       <div className="wca-answers-header">
@@ -59,10 +61,13 @@ export default function ResultsPanel({
             Waiting for the first response…
           </div>
         ) : (
-          items.map((item, index) => (
+          items.map((item) => (
             <CallCard
               key={item.result.id}
-              dataTour={index === 0 ? 'card' : undefined}
+              // De rondleiding wijst naar een transcript, dus naar het eerste
+              // échte gesprek. Handmatige invoer staat bovenaan zodra de planner
+              // zelf iets heeft ingevuld, en die kaart heeft niets te tonen.
+              dataTour={item.result.id === firstCallId ? 'card' : undefined}
               result={item.result}
               transcript={item.transcript}
               onOpen={() => onSelectWorker(item.person)}

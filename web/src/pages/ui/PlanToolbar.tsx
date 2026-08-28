@@ -22,6 +22,8 @@ type PlanToolbarProps = {
   onToggleAnswers: () => void
   onStart: () => void
   onReset: () => void
+  /** Er staat beschikbaarheid die de planner zelf heeft ingevuld. */
+  hasManual: boolean
 }
 
 function Dropdown({
@@ -90,6 +92,7 @@ export default function PlanToolbar({
   onToggleAnswers,
   onStart,
   onReset,
+  hasManual,
 }: PlanToolbarProps) {
   const isRunning = phase === 'running'
   const isComplete = phase === 'complete'
@@ -158,19 +161,37 @@ export default function PlanToolbar({
             </button>
           </>
         ) : isRunning ? (
-          <button type="button" disabled className="wca-primary wca-primary-ghost">
+          // Zelfde anker als de knop die hij vervangt: anders verdwijnt het
+          // doelwit van de rondleiding op het moment dat het bellen begint, en
+          // staat de spotlight nergens op.
+          <button
+            type="button"
+            disabled
+            data-tour="call"
+            className="wca-primary wca-primary-ghost"
+          >
             Calling workforce…
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={onStart}
-            data-tour="call"
-            className={cn('wca-primary', tourStep === 5 && 'wca-tour-callpulse')}
-          >
-            <PhoneOutgoing className="h-4 w-4" />
-            Call workforce
-          </button>
+          <>
+            {/* Zodra er met de hand iets gezet is staat er demo-toestand op het
+                scherm die anders alleen per persoon terug te draaien was. */}
+            {hasManual ? (
+              <button type="button" onClick={onReset} className="wca-tool">
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onStart}
+              data-tour="call"
+              className={cn('wca-primary', tourStep === 3 && 'wca-tour-callpulse')}
+            >
+              <PhoneOutgoing className="h-4 w-4" />
+              Call workforce
+            </button>
+          </>
         )}
       </div>
     </div>
