@@ -21,7 +21,11 @@ export const SHIFTS = ['06:00–14:00', '14:00–22:00'] as const
 export type Shift = (typeof SHIFTS)[number]
 
 /** De vier systemen in de kop; elk inzicht wijst er één aan. */
-export type SourceSystem = 'ERP' | 'WMS' | 'HR' | 'SHAREPOINT'
+export const SYSTEMS = ['ERP', 'WMS', 'HR', 'SHAREPOINT'] as const
+export type SourceSystem = (typeof SYSTEMS)[number]
+
+/** Waar de demo staat: niets gepland, bezig, of klaar om na te kijken. */
+export type Phase = 'idle' | 'syncing' | 'planning' | 'complete'
 
 export type Severity = 'blocking' | 'attention'
 
@@ -113,19 +117,24 @@ export const ORDERS: Order[] = [
   { id: 'O-C336', code: 'C-336', customer: NEYTS, product: 'Export pallets', quantity: '8 800 u' },
 ]
 
-/** Wat er al op het bord staat als de demo opent. */
-export const INITIAL_PLACEMENTS: Record<string, Placement> = {
-  [slotKey('L1', 'Mon')]: { orderId: 'O-A118', workerId: 'W3', shift: SHIFTS[0] },
-  [slotKey('L1', 'Tue')]: { orderId: 'O-A121', workerId: 'W4', shift: SHIFTS[1] },
-  [slotKey('L1', 'Wed')]: { orderId: 'O-A125', workerId: 'W4', shift: SHIFTS[0] },
-  [slotKey('L2', 'Mon')]: { orderId: 'O-B204', workerId: 'W4', shift: SHIFTS[0] },
-  [slotKey('L2', 'Thu')]: { orderId: 'O-B210', workerId: 'W2', shift: SHIFTS[1] },
-  [slotKey('L3', 'Mon')]: { orderId: 'O-C330', workerId: 'W2', shift: SHIFTS[1] },
-  [slotKey('L3', 'Wed')]: { orderId: 'O-C336', workerId: 'W1', shift: SHIFTS[0] },
-}
-
-/** De drie orders die nog geplaatst moeten worden, in deze volgorde. */
-export const BACKLOG_ORDER_IDS = ['O-A129', 'O-B207', 'O-C334']
+/**
+ * De planning die het systeem voorstelt, in de volgorde waarin hij op het bord
+ * verschijnt. De drie orders die een aandachtspunt opleveren staan bewust niet
+ * vooraan: het bord vult zich eerst zonder problemen, zodat het opvalt wanneer
+ * er een verschijnt.
+ */
+export const PLAN_SEQUENCE: { slot: string; placement: Placement }[] = [
+  { slot: slotKey('L1', 'Mon'), placement: { orderId: 'O-A118', workerId: 'W3', shift: SHIFTS[0] } },
+  { slot: slotKey('L2', 'Mon'), placement: { orderId: 'O-B204', workerId: 'W4', shift: SHIFTS[0] } },
+  { slot: slotKey('L3', 'Mon'), placement: { orderId: 'O-C330', workerId: 'W2', shift: SHIFTS[1] } },
+  { slot: slotKey('L1', 'Tue'), placement: { orderId: 'O-A121', workerId: 'W4', shift: SHIFTS[1] } },
+  { slot: slotKey('L3', 'Tue'), placement: { orderId: 'O-C334', workerId: 'W3', shift: SHIFTS[0] } },
+  { slot: slotKey('L1', 'Wed'), placement: { orderId: 'O-A125', workerId: 'W4', shift: SHIFTS[0] } },
+  { slot: slotKey('L2', 'Wed'), placement: { orderId: 'O-B207', workerId: 'W1', shift: SHIFTS[0] } },
+  { slot: slotKey('L3', 'Wed'), placement: { orderId: 'O-C336', workerId: 'W2', shift: SHIFTS[0] } },
+  { slot: slotKey('L1', 'Thu'), placement: { orderId: 'O-A129', workerId: 'W3', shift: SHIFTS[0] } },
+  { slot: slotKey('L2', 'Thu'), placement: { orderId: 'O-B210', workerId: 'W2', shift: SHIFTS[1] } },
+]
 
 export const orderById = (id: string): Order | undefined => ORDERS.find((o) => o.id === id)
 export const workerById = (id: string | null): Worker | undefined =>

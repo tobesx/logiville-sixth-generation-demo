@@ -1,10 +1,11 @@
 import { cn } from '../../lib/shadcn/utils'
 import { AlertTriangle, Ban, Check } from 'lucide-react'
-import type { Insight, Worker } from './data'
+import type { Insight, Phase, Worker } from './data'
 
 type InsightsPanelProps = {
   insights: Insight[]
   resolved: Set<string>
+  phase: Phase
   onHover: (slot: string | null) => void
   onResolve: (insight: Insight) => void
   onReplace: (insight: Insight, worker: Worker) => void
@@ -20,6 +21,7 @@ type InsightsPanelProps = {
 export default function InsightsPanel({
   insights,
   resolved,
+  phase,
   onHover,
   onResolve,
   onReplace,
@@ -40,7 +42,11 @@ export default function InsightsPanel({
       <div className="pp-flags-body ico-scrollbar">
         {open.length === 0 ? (
           <p className="pp-side-empty">
-            Nothing to check. Every order on the board passed ERP, WMS, HR and SharePoint.
+            {phase === 'idle'
+              ? 'Nothing planned yet. Generate a plan to see what needs checking.'
+              : phase === 'complete'
+                ? 'Nothing left to check. Every order passed ERP, WMS, HR and SharePoint.'
+                : 'Checking each order against the connected systems…'}
           </p>
         ) : (
           open.map((insight) => {

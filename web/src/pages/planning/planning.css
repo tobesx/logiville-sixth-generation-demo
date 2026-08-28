@@ -40,12 +40,24 @@
   color: var(--text-body);
 }
 
+.pp-system {
+  opacity: 0.35;
+  transition: opacity 300ms ease;
+}
+
+/* Groen pas zodra het systeem echt geraadpleegd is; dat oplichten één voor
+   één is het werk dat de planner nu met de hand doet. */
+.pp-system-on { opacity: 1; }
+
 .pp-system-dot {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: var(--success-brand);
+  background: var(--border-soft);
+  transition: background-color 300ms ease;
 }
+
+.pp-system-on .pp-system-dot { background: var(--success-brand); }
 
 .pp-systems-spacer { flex: 1; }
 
@@ -58,6 +70,32 @@
 }
 
 .pp-time s { opacity: 0.55; }
+
+.pp-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: var(--accent-brand);
+  color: var(--on-accent);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms ease, opacity 160ms ease;
+}
+
+.pp-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.pp-primary:disabled { cursor: default; opacity: 0.6; }
+
+.pp-primary-ghost {
+  background: transparent;
+  color: var(--text-body);
+  border: 1px solid var(--border-brand);
+}
+
+.pp-primary-ghost:hover { background: var(--bg-sunken); }
 .pp-time strong { color: var(--success-brand); font-size: 14px; }
 
 /* ---------- indeling ---------- */
@@ -116,6 +154,10 @@
 }
 
 .pp-side-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
   font-weight: 600;
@@ -147,9 +189,23 @@
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.pp-card-active {
-  border-color: var(--accent-brand);
-  box-shadow: 0 0 0 2px var(--accent-line);
+/* Order is ingepland; het vinkje laat de voortgang van de run zien. */
+.pp-card {
+  position: relative;
+  opacity: 0.45;
+  transition: opacity 260ms ease, border-color 260ms ease;
+}
+
+.pp-card-placed {
+  opacity: 1;
+  border-color: var(--success-line);
+}
+
+.pp-card-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--success-brand);
 }
 
 .pp-card-code {
@@ -176,13 +232,6 @@
   cursor: pointer;
   text-align: left;
   transition: border-color 150ms ease, background-color 150ms ease;
-}
-
-.pp-person:hover:not(:disabled) { background: var(--bg-sunken); }
-
-.pp-person-active {
-  border-color: var(--accent-brand);
-  background: var(--accent-dim);
 }
 
 .pp-person-off {
@@ -295,7 +344,6 @@
   border-radius: var(--r-block);
   border: 1px dashed var(--border-brand);
   background: transparent;
-  cursor: pointer;
   transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -303,6 +351,18 @@
   border-style: solid;
   background: var(--bg-surface);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  animation: pp-land 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Elke order landt afzonderlijk, zodat je ziet dát er iets gebeurt in plaats
+   van dat het bord in één klap vol staat. */
+@keyframes pp-land {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-slot-filled { animation: none; }
 }
 
 .pp-slot-attention {
@@ -313,12 +373,6 @@
 .pp-slot-blocking {
   border-color: var(--danger-brand);
   background: var(--danger-dim);
-}
-
-/* Alleen de slots waar de huidige selectie iets kan doen. */
-.pp-slot-target {
-  border-color: var(--accent-brand);
-  border-style: dashed;
 }
 
 .pp-slot-highlight { box-shadow: 0 0 0 2px var(--accent-brand); }
@@ -513,4 +567,9 @@
   background: var(--text-strong);
   color: var(--bg-surface);
   cursor: pointer;
+}
+
+.pp-side-count {
+  font-size: 10px;
+  color: var(--text-muted);
 }
