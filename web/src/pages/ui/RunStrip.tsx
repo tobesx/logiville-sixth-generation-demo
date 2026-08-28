@@ -52,10 +52,6 @@ export default function RunStrip({
   const isIdle = state === 'idle'
   const isComplete = state === 'complete'
 
-  // De balk gaf eerder de voortgang van de agent weer, en stond dus stil op nul
-  // zolang er niets liep — een lege balk die niets zei. Nu toont hij bevestigde
-  // beschikbaarheid tegenover wat er ingepland staat: bij het openen van het
-  // scherm is dat 0 van 100, en dat ís het werk dat er ligt.
   const progress = scheduled > 0 ? Math.round((counts.available / scheduled) * 100) : 0
 
   const valueOf = (key: keyof Counts | 'workers'): string => {
@@ -63,32 +59,42 @@ export default function RunStrip({
     return String(counts[key])
   }
 
-  const title = isIdle ? 'Ready to call' : isComplete ? 'Call run completed' : 'Live call run'
+  const title = isComplete ? 'Call run completed' : 'Live call run'
 
   return (
     <div className="wca-runstrip">
-      <div className="flex shrink-0 items-center gap-2">
-        {state === 'running' ? (
-          <span className="ico-live-dot" aria-hidden="true" />
-        ) : (
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: isComplete ? 'var(--success-brand)' : 'var(--text-muted)' }}
-            aria-hidden="true"
-          />
+      {/* Zolang de agent niet gelopen heeft staat hier geen stip, geen kop en
+          geen balk: dat zou werk suggereren dat nog niet gedaan is. De regel
+          zegt alleen wat er nog te bevestigen valt. */}
+      {isIdle ? null : (
+        <div className="flex shrink-0 items-center gap-2">
+          {state === 'running' ? (
+            <span className="ico-live-dot" aria-hidden="true" />
+          ) : (
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ background: 'var(--success-brand)' }}
+              aria-hidden="true"
+            />
+          )}
+          <span className="ico-heading whitespace-nowrap text-[15px] font-semibold text-[var(--text-white)]">
+            {title}
+          </span>
+        </div>
+      )}
+
+      {isIdle ? null : (
+        <div className="wca-runstrip-progress">
+          <div className="wca-runstrip-progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+
+      <span
+        className={cn(
+          'wca-tabnum whitespace-nowrap font-mono text-[12px] text-[var(--text-muted)]',
+          isIdle ? 'flex-1' : 'shrink-0',
         )}
-        <span className="ico-heading whitespace-nowrap text-[15px] font-semibold text-[var(--text-white)]">
-          {title}
-        </span>
-      </div>
-
-      {/* Blijft staan als de run klaar is: een bezettingsgraad zegt op dat
-          moment nog iets, een voortgangsbalk op 100 % niet. */}
-      <div className="wca-runstrip-progress">
-        <div className="wca-runstrip-progress-fill" style={{ width: `${progress}%` }} />
-      </div>
-
-      <span className="wca-tabnum shrink-0 whitespace-nowrap font-mono text-[12px] text-[var(--text-muted)]">
+      >
         {counts.available} / {scheduled} confirmed available
       </span>
 
