@@ -1,4 +1,4 @@
-import { Briefcase, Clock, Phone, X } from 'lucide-react'
+import { Briefcase, Check, Clock, Phone, X } from 'lucide-react'
 import { cn } from '../../lib/shadcn/utils'
 import { formatShiftTimeRange } from '../shift'
 import { toneMeta } from '../wca'
@@ -14,6 +14,11 @@ type WorkerDrawerProps = {
   phoneKnown: boolean
   result: DemoResult | null
   transcript: TranscriptLine[]
+  /** Wat de planner zelf heeft ingevuld, buiten een gesprek om. */
+  manualValue: 'YES' | 'NO' | null
+  /** Uit terwijl deze persoon aan de lijn is; dan is bellen aan zet. */
+  canSetManual: boolean
+  onSetManual: (value: 'YES' | 'NO') => void
   onClose: () => void
 }
 
@@ -57,6 +62,9 @@ export default function WorkerDrawer({
   phoneKnown,
   result,
   transcript,
+  manualValue,
+  canSetManual,
+  onSetManual,
   onClose,
 }: WorkerDrawerProps) {
   const meta = toneMeta[tone]
@@ -107,7 +115,44 @@ export default function WorkerDrawer({
           />
         </div>
 
-        {resolved && result ? (
+        {canSetManual ? (
+          <div className="mt-7">
+            <h3 className="ico-section-label">Set availability yourself</h3>
+            <p className="mt-2 font-['IBM_Plex_Sans'] text-[13px] text-[var(--text-muted)]">
+              {manualValue
+                ? 'Set by you, so the agent skips this worker. Press again to undo.'
+                : 'If you already know, record it here and the agent will not call this worker.'}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => onSetManual('YES')}
+                aria-pressed={manualValue === 'YES'}
+                className={cn('wca-manual-btn', manualValue === 'YES' && 'wca-manual-btn-yes')}
+              >
+                <Check className="h-4 w-4" strokeWidth={2.4} />
+                Available
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetManual('NO')}
+                aria-pressed={manualValue === 'NO'}
+                className={cn('wca-manual-btn', manualValue === 'NO' && 'wca-manual-btn-no')}
+              >
+                <X className="h-4 w-4" strokeWidth={2.4} />
+                Unavailable
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {resolved && result?.manual ? (
+          <div className="mt-7 rounded-xl border border-[var(--border-brand)] bg-[var(--bg-deep)] px-5 py-4">
+            <p className="font-['IBM_Plex_Sans'] text-[14px] text-[var(--text-muted)]">
+              Recorded by you — there is no call and no transcript for this worker.
+            </p>
+          </div>
+        ) : resolved && result ? (
           <>
             <div className="mt-7">
               <h3 className="ico-section-label">Structured result</h3>

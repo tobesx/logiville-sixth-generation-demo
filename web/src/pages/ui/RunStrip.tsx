@@ -10,8 +10,10 @@ type Counts = {
 
 type RunStripProps = {
   state: 'idle' | 'running' | 'complete'
-  processed: number
-  runCount: number
+  /** Iedereen die voor morgen ingepland staat. Verandert niet tijdens een run. */
+  scheduled: number
+  /** Hoeveel daarvan al een status hebben, gebeld of met de hand gezet. */
+  resolved: number
   counts: Counts
   /** Actief filter na afloop; alleen dan zijn de uitkomsten aanklikbaar. */
   statusFilter?: ChipTone | 'all'
@@ -24,7 +26,7 @@ const STATS: {
   label: string
   color: string
 }[] = [
-  { key: 'workers', label: 'Calls queued', color: 'var(--text-white)' },
+  { key: 'workers', label: 'Still to call', color: 'var(--text-white)' },
   { key: 'available', filterKey: 'yes', label: 'Available', color: 'var(--success-brand)' },
   { key: 'unavailable', filterKey: 'no', label: 'Unavailable', color: 'var(--danger-brand)' },
   { key: 'action', filterKey: 'other', label: 'Action needed', color: 'var(--warn-brand)' },
@@ -41,21 +43,24 @@ const STATS: {
  */
 export default function RunStrip({
   state,
-  processed,
-  runCount,
+  scheduled,
+  resolved,
   counts,
   statusFilter = 'all',
   onFilter,
 }: RunStripProps) {
   const isIdle = state === 'idle'
   const isComplete = state === 'complete'
-  const progress = isComplete ? 100 : runCount > 0 && !isIdle ? Math.round((processed / runCount) * 100) : 0
 
-  // Uitkomsten zijn voor de run onbekend. Een nul zou lezen als "niemand
-  // beschikbaar" in plaats van "nog niet gebeld".
+  // De balk gaf eerder de voortgang van de agent weer, en stond dus stil op nul
+  // zolang er niets liep — een lege balk die niets zei. Nu toont hij bevestigde
+  // beschikbaarheid tegenover wat er ingepland staat: bij het openen van het
+  // scherm is dat 0 van 100, en dat ís het werk dat er ligt.
+  const progress = scheduled > 0 ? Math.round((counts.available / scheduled) * 100) : 0
+
   const valueOf = (key: keyof Counts | 'workers'): string => {
-    if (key === 'workers') return String(runCount)
-    return isIdle ? '—' : String(counts[key])
+    if (key === 'workers') return String(Math.max(scheduled - resolved, 0))
+    return String(counts[key])
   }
 
   const title = isIdle ? 'Ready to call' : isComplete ? 'Call run completed' : 'Live call run'
@@ -77,19 +82,14 @@ export default function RunStrip({
         </span>
       </div>
 
-      {/* Een volle balk zegt niets meer zodra de run klaar is; de uitkomst wel. */}
-      {isComplete ? (
-        <span className="flex-1 text-right font-['IBM_Plex_Sans'] text-[12px] italic leading-[1.35] text-[var(--text-muted)]">
-          A manual calling process has been transformed into structured workforce information.
-        </span>
-      ) : (
-        <div className="wca-runstrip-progress">
-          <div className="wca-runstrip-progress-fill" style={{ width: `${progress}%` }} />
-        </div>
-      )}
+      {/* Blijft staan als de run klaar is: een bezettingsgraad zegt op dat
+          moment nog iets, een voortgangsbalk op 100 % niet. */}
+      <div className="wca-runstrip-progress">
+        <div className="wca-runstrip-progress-fill" style={{ width: `${progress}%` }} />
+      </div>
 
       <span className="wca-tabnum shrink-0 whitespace-nowrap font-mono text-[12px] text-[var(--text-muted)]">
-        {isIdle ? `${runCount} calls placed in parallel` : `${processed} / ${runCount} processed`}
+        {counts.available} / {scheduled} confirmed available
       </span>
 
       <div className="flex shrink-0 items-center gap-5">
@@ -101,7 +101,7 @@ export default function RunStrip({
             <>
               <span
                 className="wca-tabnum ico-heading text-[20px] font-bold"
-                style={{ color: isIdle && stat.key !== 'workers' ? 'var(--text-muted)' : stat.color }}
+                style={{ color: valueOf(stat.key) === '0' ? 'var(--text-muted)' : stat.color }}
               >
                 {valueOf(stat.key)}
               </span>

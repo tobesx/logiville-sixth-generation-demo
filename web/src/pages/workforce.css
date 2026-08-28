@@ -1800,3 +1800,40 @@
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Beschikbaarheid die de planner zelf invult, in het detailpaneel. */
+.wca-manual-btn {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--border-brand);
+  border-radius: 10px;
+  background: var(--bg-deep);
+  padding: 10px 14px;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-body);
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.wca-manual-btn-yes {
+  border-color: var(--success-brand);
+  background: color-mix(in srgb, var(--success-brand) 14%, transparent);
+  color: var(--success-brand);
+}
+
+.wca-manual-btn-no {
+  border-color: var(--danger-brand);
+  background: color-mix(in srgb, var(--danger-brand) 14%, transparent);
+  color: var(--danger-brand);
+}
+
+@media (hover: hover) {
+  .wca-manual-btn:hover {
+    border-color: var(--border-soft);
+    color: var(--text-white);
+  }
+}

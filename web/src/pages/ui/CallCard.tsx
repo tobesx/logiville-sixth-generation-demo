@@ -64,7 +64,13 @@ export default function CallCard({ result, transcript, onOpen, dataTour }: CallC
         </div>
       </div>
 
-      {result.quote ? (
+      {/* Nooit het mock-citaat van een handmatige invoer tonen: die persoon
+          heeft niets gezegd, er is geen gesprek geweest. */}
+      {result.manual ? (
+        <p className="mt-3 font-['IBM_Plex_Sans'] text-[14px] italic text-[var(--text-muted)]">
+          Recorded by the planner — no call was made.
+        </p>
+      ) : result.quote ? (
         <p className="mt-3 font-['IBM_Plex_Sans'] text-[14px] italic leading-6 text-[var(--text-body)]">
           “{result.quote}”
         </p>
@@ -82,6 +88,7 @@ export default function CallCard({ result, transcript, onOpen, dataTour }: CallC
         ))}
       </div>
 
+      {result.manual ? null : (
       <button
         type="button"
         onClick={() => setShowTranscript((value) => !value)}
@@ -92,6 +99,7 @@ export default function CallCard({ result, transcript, onOpen, dataTour }: CallC
         />
         {showTranscript ? 'Hide transcript' : 'Show transcript'}
       </button>
+      )}
 
       {showTranscript ? (
         <div className="wca-transcript mt-3">

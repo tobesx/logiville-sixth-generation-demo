@@ -136,6 +136,11 @@ export default function WorkforceCallAgent() {
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [states, setStates] = useState<Record<string, CallState>>(() => makeReadyStates(people))
+  /**
+   * Beschikbaarheid die de planner zelf heeft ingevuld, buiten een gesprek om.
+   * De agent slaat deze mensen over: wat je al weet hoef je niet te bellen.
+   */
+  const [manual, setManual] = useState<Record<string, 'YES' | 'NO'>>({})
   const [resolvedIds, setResolvedIds] = useState<string[]>([])
   const [realCalls, setRealCalls] = useState<Record<string, RunCall>>({})
   const [runCount, setRunCount] = useState(0)
@@ -351,7 +356,10 @@ export default function WorkforceCallAgent() {
 
   const startRun = (opts?: { mockOnly?: boolean }) => {
     if (phase === 'running') return
-    const active = activePeople
+    // Wie de planner zelf al heeft ingevuld wordt niet gebeld, en houdt zijn
+    // status door de run heen.
+    const manualIds = Object.keys(manual)
+    const active = activePeople.filter((person) => !manual[person.id])
     if (active.length === 0) return
 
     clearAll()
@@ -359,10 +367,13 @@ export default function WorkforceCallAgent() {
     resolvedRealRef.current = new Set()
     runTotalRef.current = active.length
     setRunCount(active.length)
-    setResolvedIds([])
+    setResolvedIds(manualIds)
     setRealCalls({})
     setRunError(null)
-    setStates(makeReadyStates(people))
+    setStates({
+      ...makeReadyStates(people),
+      ...Object.fromEntries(manualIds.map((id) => [id, 'completed' as CallState])),
+    })
     setPhase('running')
 
     // Modal "connecting to HR" overlay, three sequential steps, then dial.
@@ -414,7 +425,24 @@ export default function WorkforceCallAgent() {
     setShiftFilter('all')
     setStatusFilter('all')
     setRealToggles(realDefaults)
+    setManual({})
     setStates(makeReadyStates(people))
+  }
+
+  /** Nogmaals dezelfde knop wist de invoer; anders is een misklik onherstelbaar. */
+  const setManualStatus = (id: string, value: 'YES' | 'NO') => {
+    setManual((current) => {
+      const next = { ...current }
+      const clearing = next[id] === value
+      if (clearing) delete next[id]
+      else next[id] = value
+
+      setStates((prev) => ({ ...prev, [id]: clearing ? 'ready' : 'completed' }))
+      setResolvedIds((prev) =>
+        clearing ? prev.filter((x) => x !== id) : prev.includes(id) ? prev : [...prev, id],
+      )
+      return next
+    })
   }
 
   const toggleReal = (id: string) => {
@@ -475,6 +503,19 @@ export default function WorkforceCallAgent() {
 
   /* ---------- derived data ---------- */
   const resultFor = (person: DemoPerson): DemoResult => {
+    const own = manual[person.id]
+    if (own) {
+      // Geen citaat en geen gestructureerde velden: er is geen gesprek geweest.
+      return {
+        id: person.id,
+        name: person.name,
+        real: false,
+        classification: own,
+        quote: null,
+        structured: [],
+        manual: true,
+      }
+    }
     const realCall = realCalls[person.id]
     if (person.real && realCall) {
       return {
@@ -497,6 +538,8 @@ export default function WorkforceCallAgent() {
   }
 
   const classificationFor = (person: DemoPerson) => {
+    const own = manual[person.id]
+    if (own) return own
     const realCall = realCalls[person.id]
     if (person.real && realCall) return realCall.classification ?? 'NO_ANSWER'
     return person.outcome.classification
@@ -514,7 +557,10 @@ export default function WorkforceCallAgent() {
         return {
           person,
           result,
-          transcript: buildTranscript(person, result.quote, result.classification),
+          // Geen gesprek, dus geen transcript om te tonen.
+          transcript: result.manual
+            ? []
+            : buildTranscript(person, result.quote, result.classification),
         }
       })
     return items.sort((a, b) => Number(b.result.real) - Number(a.result.real))
@@ -644,10 +690,11 @@ export default function WorkforceCallAgent() {
             <div className="mt-3 shrink-0" data-tour={isComplete ? 'result' : 'runstrip'}>
               <RunStrip
                 state={isComplete ? 'complete' : isRunning ? 'running' : 'idle'}
-                processed={resolvedIds.length}
-                // Voor de run: precies de mensen die straks gebeld worden, dus
-                // zonder de echte nummers waarvan de live-toggle uit staat.
-                runCount={isRunning || isComplete ? runCount : activePeople.length}
+                // Het rooster van morgen; dat verandert niet doordat er gebeld
+                // wordt. Wat wél verandert is hoeveel daarvan al een status
+                // hebben — gebeld of met de hand gezet.
+                scheduled={activePeople.length}
+                resolved={resolvedIds.length}
                 counts={counts}
                 statusFilter={statusFilter}
                 onFilter={(key) => setStatusFilter(statusFilter === key ? 'all' : key)}
@@ -670,7 +717,9 @@ export default function WorkforceCallAgent() {
           {answersOpen && phase !== 'idle' ? (
             <ResultsPanel
               items={resolvedItems}
-              runCount={runCount}
+              // Het hele rooster, niet alleen wie gebeld is: `resolvedIds` telt
+              // ook de handmatige invoer mee, en dan las de teller "100 / 97".
+              runCount={activePeople.length}
               processed={resolvedIds.length}
               isComplete={isComplete}
               onSelectWorker={(person) => setSelectedId(person.id)}
@@ -738,6 +787,14 @@ export default function WorkforceCallAgent() {
                 )
               : []
           }
+          manualValue={manual[selectedPerson.id] ?? null}
+          // Niet terwijl deze persoon aan de lijn is: dan komt het antwoord uit
+          // het gesprek en zou een knop daaroverheen schrijven.
+          canSetManual={
+            (states[selectedPerson.id] ?? 'ready') !== 'calling' &&
+            (states[selectedPerson.id] ?? 'ready') !== 'answered'
+          }
+          onSetManual={(value) => setManualStatus(selectedPerson.id, value)}
           onClose={() => setSelectedId(null)}
         />
       ) : null}

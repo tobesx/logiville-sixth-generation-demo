@@ -18,6 +18,12 @@ export type DemoResult = {
   classification: CallClassification
   quote: string | null
   structured: StructuredField[]
+  /**
+   * Door de planner zelf gezet, niet uit een gesprek. Zonder dit onderscheid
+   * zou een handmatige invoer het mock-citaat van die persoon tonen — een
+   * uitspraak die nooit gedaan is.
+   */
+  manual?: boolean
 }
 
 export const toneMeta: Record<ChipTone, { label: string; chipClass: string; textClass: string }> = {
