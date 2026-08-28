@@ -1518,28 +1518,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* legend */
+/* Regel boven het plan; hield eerder ook de legende, die is vervallen. */
 .wca-legend {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   padding-bottom: 8px;
-}
-
-.wca-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.wca-legend-dot {
-  height: 8px;
-  width: 8px;
-  border-radius: 999px;
 }
 
 /* sliding answers panel */

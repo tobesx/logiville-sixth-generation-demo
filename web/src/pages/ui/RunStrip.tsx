@@ -83,21 +83,6 @@ export default function RunStrip({
         </div>
       )}
 
-      {isIdle ? null : (
-        <div className="wca-runstrip-progress">
-          <div className="wca-runstrip-progress-fill" style={{ width: `${progress}%` }} />
-        </div>
-      )}
-
-      <span
-        className={cn(
-          'wca-tabnum whitespace-nowrap font-mono text-[12px] text-[var(--text-muted)]',
-          isIdle ? 'flex-1' : 'shrink-0',
-        )}
-      >
-        {counts.available} / {scheduled} confirmed available
-      </span>
-
       <div className="flex shrink-0 items-center gap-5">
         {STATS.map((stat) => {
           const active = isComplete && stat.filterKey === statusFilter
@@ -144,6 +129,14 @@ export default function RunStrip({
           )
         })}
       </div>
+
+      {/* Pas als de agent loopt, en dan rechts van de cijfers: het is de enige
+          plek waar voortgang iets betekent. */}
+      {isIdle ? null : (
+        <div className="wca-runstrip-progress">
+          <div className="wca-runstrip-progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+      )}
     </div>
   )
 }

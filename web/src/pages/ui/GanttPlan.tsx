@@ -62,14 +62,6 @@ function LaneStatusBar({ counts, total }: { counts: Counts; total: number }) {
   )
 }
 
-const LEGEND: { label: string; color: string }[] = [
-  { label: 'Not called', color: '#C1C9D2' },
-  { label: 'Available', color: 'var(--success-brand)' },
-  { label: 'Unavailable', color: 'var(--danger-brand)' },
-  { label: 'Action needed', color: 'var(--warn-brand)' },
-  { label: 'No answer', color: 'var(--neutral-brand)' },
-]
-
 function ShiftCard({
   lane,
   block,
@@ -204,21 +196,16 @@ export default function GanttPlan({ lanes = [], getTone, phase, tourStep = 0, to
 
   return (
     <div className="wca-gantt">
-      <div className="wca-legend">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {LEGEND.map((item) => (
-            <span key={item.label} className="wca-legend-item">
-              <span className="wca-legend-dot" style={{ background: item.color }} />
-              {item.label}
-            </span>
-          ))}
-        </div>
-        {phase === 'idle' ? (
+      {/* De legende stond hier met precies dezelfde vijf categorieën als de
+          statusregel erboven, inclusief kleuren. Weg; alleen de notitie dat er
+          nog niets gebeld is blijft. */}
+      {phase === 'idle' ? (
+        <div className="wca-legend">
           <span className="font-['IBM_Plex_Sans'] text-[11px] text-[var(--text-muted)]">
             No calls placed yet
           </span>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div className="wca-gantt-head">
         <div className="wca-ruler-spacer" />
