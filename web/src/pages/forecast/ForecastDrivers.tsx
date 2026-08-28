@@ -11,12 +11,11 @@ const MAX_ABS = 0.34
 
 type DriversProps = {
   insight: string
-  hasEdits: boolean
 }
 
-export default function ForecastDrivers({ insight, hasEdits }: DriversProps) {
+export default function ForecastDrivers({ insight }: DriversProps) {
   return (
-    <section className="fc-card" style={{ display: 'flex', flexDirection: 'column' }}>
+    <section className="fc-card" data-tour="fc-drivers" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="fc-card-head">
         <div className="fc-card-title">Why this forecast</div>
         <div className="fc-card-sub">Average driver contribution on the filtered selection</div>
@@ -54,10 +53,10 @@ export default function ForecastDrivers({ insight, hasEdits }: DriversProps) {
 
       <div style={{ marginTop: 'auto', padding: '14px 18px 18px' }}>
         <p className="fc-insight">{insight}</p>
+        {/* Stond hier een uitnodiging om cellen te bewerken; die kunnen niet
+            meer, dus die tekst beloofde iets wat de demo niet doet. */}
         <div className="fc-hint">
-          {hasEdits
-            ? 'Adjusted line follows your edits live. Save to write them back to the plan.'
-            : 'Edit any cell — the adjusted line and the KPIs below recalculate instantly.'}
+          Every number in the table above traces back to these drivers.
         </div>
       </div>
     </section>

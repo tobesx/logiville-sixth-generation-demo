@@ -4,7 +4,8 @@ import PlanningTopbar from './planning/PlanningTopbar'
 import PlanBoard from './planning/PlanBoard'
 import SidePane from './planning/SidePane'
 import InsightsPanel from './planning/InsightsPanel'
-import PlanTour from './planning/PlanTour'
+import TourOverlay from './ui/TourOverlay'
+import { planSteps } from './planning/planSteps'
 import {
   PLAN_SEQUENCE,
   SYSTEMS,
@@ -121,7 +122,12 @@ export default function ProductionPlanning() {
         <PlanningTopbar
           tourRunning={tourStep > 0}
           tourCompleted={tourCompleted}
-          onStartTour={() => setTourStep(1)}
+          onStartTour={() => {
+            // Zonder reset staat phase nog op 'complete' van de vorige ronde,
+            // en springt de tour meteen door naar de laatste stap.
+            reset()
+            setTourStep(1)
+          }}
         />
 
         <div className="pp-systems">
@@ -206,11 +212,9 @@ export default function ProductionPlanning() {
       </div>
 
       {tourStep > 0 ? (
-        <PlanTour
+        <TourOverlay
           step={tourStep}
-          phase={phase}
-          orderCount={PLAN_SEQUENCE.length}
-          insightCount={openInsights.length}
+          steps={planSteps(phase, PLAN_SEQUENCE.length, openInsights.length)}
           onNext={() => setTourStep((s) => s + 1)}
           onFinish={() => {
             setTourStep(0)

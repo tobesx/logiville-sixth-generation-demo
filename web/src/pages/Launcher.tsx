@@ -56,7 +56,7 @@ function CompactCard({ demo, onOpen, delay }: { demo: Demo; onOpen: () => void; 
       type="button"
       onClick={onOpen}
       style={{ animationDelay: `${delay}ms` }}
-      className="demo-card launcher-rise group w-full flex-1 p-6 xl:p-7"
+      className="demo-card launcher-rise group w-full min-h-fit flex-1 p-5 xl:p-6"
     >
       <div className="flex h-full items-start gap-5">
         <div className="demo-icon-wrap flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[var(--border-brand)] bg-[var(--bg-deep)] text-[var(--text-body)]">
@@ -69,7 +69,7 @@ function CompactCard({ demo, onOpen, delay }: { demo: Demo; onOpen: () => void; 
           <p className="mt-1 ico-heading text-[13px] font-semibold text-[var(--accent-brand)]">
             {demo.subtitle}
           </p>
-          <p className="ico-truncate-two mt-2 font-['IBM_Plex_Sans'] text-[13px] leading-snug text-[var(--text-muted)] xl:text-[14px]">
+          <p className="mt-2 font-['IBM_Plex_Sans'] text-[13px] leading-snug text-[var(--text-muted)] xl:text-[14px]">
             {demo.description}
           </p>
           <span className="demo-cta mt-auto inline-flex items-center gap-1.5 pt-3 font-['IBM_Plex_Sans'] text-[13px] font-semibold text-[var(--text-body)]">
@@ -89,7 +89,7 @@ export default function Launcher() {
 
   return (
     <div className="ico-app launcher-root">
-      <div className="launcher-content px-8 py-7 xl:px-14 xl:py-9 2xl:px-20 2xl:py-11">
+      <div className="launcher-content px-8 py-5 xl:px-14 xl:py-7 2xl:px-20 2xl:py-9">
         {/* Hero */}
         <header className="launcher-rise shrink-0" style={{ animationDelay: '0ms' }}>
           <div className="flex items-center justify-between gap-6">
@@ -103,7 +103,7 @@ export default function Launcher() {
             <span className="ico-section-label hidden sm:block">Logiville · Live demo</span>
           </div>
 
-          <div className="mt-6 xl:mt-8">
+          <div className="mt-5 xl:mt-6">
             <h1 className="ico-heading max-w-[22ch] text-[34px] font-bold leading-[1.05] text-[var(--text-white)] xl:text-[44px] 2xl:text-[52px]">
               Intelligent software for logistics &amp; manufacturing
             </h1>
@@ -114,11 +114,11 @@ export default function Launcher() {
         </header>
 
         {/* Demo launcher grid */}
-        <div className="mt-7 grid min-h-0 flex-1 grid-cols-1 gap-5 lg:grid-cols-2 xl:mt-9 xl:gap-6">
+        <div className="mt-5 grid flex-1 grid-cols-1 gap-5 lg:grid-cols-2 xl:mt-7 xl:gap-6">
           {featured ? (
             <FeaturedCard demo={featured} onOpen={() => navigate(featured.path)} delay={120} />
           ) : null}
-          <div className="flex min-h-0 flex-col gap-5 xl:gap-6">
+          <div className="flex flex-col gap-4 xl:gap-5">
             {rest.map((demo, i) => (
               <CompactCard
                 key={demo.slug}

@@ -1,43 +1,41 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { X } from 'lucide-react'
-import type { Phase } from './data'
 import '../workforce.css'
 
-type Rect = { top: number; left: number; w: number; h: number }
+export type TourStep = {
+  /** Waarde van het `data-tour`-attribuut op het element dat oplicht. */
+  target: string
+  title: string
+  body: string
+  /** Knoptekst. Ontbreekt hij, dan komt er een hint in plaats van een knop. */
+  button?: string
+  /** Tekst als de stap op iets buiten de tour wacht, zoals een lopende run. */
+  hint?: string
+  /** Op false blijft de stap onzichtbaar tot hij aan de beurt is. */
+  ready?: boolean
+}
 
-type PlanTourProps = {
+type TourOverlayProps = {
+  /** 1-gebaseerd; 0 betekent geen rondleiding. */
   step: number
-  phase: Phase
-  orderCount: number
-  insightCount: number
+  steps: TourStep[]
   onNext: () => void
   onFinish: () => void
   onSkip: () => void
 }
 
+type Rect = { top: number; left: number; w: number; h: number }
+
 /**
- * Rondleiding voor Smart Production Planning.
+ * De spotlight, de kaart en het uitmeten daarvan — het deel dat elke
+ * rondleiding hetzelfde doet.
  *
- * Vier haltes langs wat de applicatie doet, niet langs hoe het bord in elkaar
- * zit: wat er klaarligt, één druk op de knop, wat er dan gebeurt, en wat er
- * voor de planner overblijft.
- *
- * De Call Agent heeft een eigen tour in ui/PlanningTour.tsx — verwarrend
- * genoeg net zo genoemd. Die is complexer (zoom, drawer, vasthoudende stap),
- * dus dit is geen kopie. Komt er een vierde demo met een rondleiding bij, dan
- * is het tijd om de meetlogica één keer te delen in plaats van een derde keer
- * te schrijven.
+ * Geschreven na twee keer bijna dezelfde code. De Call Agent houdt zijn eigen
+ * `PlanningTour`, want die doet meer: inzoomen, een drawer openen en een stap
+ * die op een klik wacht. Wie die ooit hierheen haalt, moet die drie dingen
+ * eerst een plek geven.
  */
-const TARGET_BY_STEP: Record<number, string> = {
-  1: 'inputs',
-  2: 'generate',
-  3: 'board',
-  4: 'insights',
-}
-
-const TOTAL_STEPS = 4
-
 function measure(selector: string): Rect | null {
   const el = document.querySelector(`[data-tour="${selector}"]`)
   if (!el) return null
@@ -56,38 +54,41 @@ function differs(a: Rect | null, b: Rect | null): boolean {
   )
 }
 
-export default function PlanTour({
-  step,
-  phase,
-  orderCount,
-  insightCount,
-  onNext,
-  onFinish,
-  onSkip,
-}: PlanTourProps) {
+export default function TourOverlay({ step, steps, onNext, onFinish, onSkip }: TourOverlayProps) {
+  const current = steps[step - 1]
   const [rect, setRect] = useState<Rect | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [cardH, setCardH] = useState(180)
 
-  const selector = TARGET_BY_STEP[step] ?? 'inputs'
+  const target = current?.target ?? ''
 
-  // Blijven meten: de panelen groeien terwijl de run loopt.
+  // Blijven meten: panelen groeien en schuiven terwijl een demo loopt.
   useEffect(() => {
+    if (!target) return
     let raf = 0
     const tick = () => {
       setRect((prev) => {
-        const next = measure(selector)
+        const next = measure(target)
         return differs(prev, next) ? next : prev
       })
       raf = window.requestAnimationFrame(tick)
     }
     raf = window.requestAnimationFrame(tick)
     return () => window.cancelAnimationFrame(raf)
-  }, [selector])
+  }, [target])
 
   useLayoutEffect(() => {
     if (cardRef.current) setCardH(cardRef.current.offsetHeight)
   })
+
+  // Het doel in beeld brengen. De Call Agent en het planbord passen op één
+  // scherm, maar Forecast Detail scrollt — daar staat de grafiek onder de
+  // vouw en zou de kaart naar een leeg stuk scherm wijzen.
+  useEffect(() => {
+    if (!target) return
+    const el = document.querySelector(`[data-tour="${target}"]`)
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [target])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -97,9 +98,8 @@ export default function PlanTour({
     return () => window.removeEventListener('keydown', onKey)
   }, [onSkip])
 
-  // Stap 3 hoort bij de lopende run, stap 4 bij het resultaat.
-  if (step === 3 && phase === 'idle') return null
-  if (step === 4 && phase !== 'complete') return null
+  if (!current) return null
+  if (current.ready === false) return null
   if (!rect) return null
 
   const cardW = 380
@@ -114,8 +114,8 @@ export default function PlanTour({
   }
 
   // Onder het doel als het past, anders erboven, anders ernaast. Die laatste
-  // is niet theoretisch: de zijpanelen zijn bijna schermhoog, en zonder deze
-  // tak belandt de kaart onder de onderrand.
+  // is niet de uitzondering: veel ankers zijn panelen van bijna schermhoogte,
+  // en zonder deze tak belandt de kaart onder de onderrand.
   const fitsBelow = rect.top + rect.h + 16 + cardH <= vh - 18
   const fitsAbove = rect.top - 16 - cardH >= 18
 
@@ -127,14 +127,13 @@ export default function PlanTour({
     const centred = rect.left + rect.w / 2 - cardW / 2
     cardLeft = Math.min(Math.max(18, centred), vw - cardW - 18)
   } else {
-    // Naast het doel, aan de kant met de meeste ruimte.
     const roomRight = vw - (rect.left + rect.w) - 16
     const toRight = roomRight >= cardW + 18
     cardLeft = toRight ? rect.left + rect.w + 16 : Math.max(18, rect.left - 16 - cardW)
     cardTop = Math.min(Math.max(18, rect.top + rect.h / 2 - cardH / 2), vh - cardH - 18)
   }
 
-  const content = stepContent(step, { orderCount, insightCount })
+  const isLast = step === steps.length
 
   return (
     <div className="wca-tour-layer">
@@ -143,19 +142,19 @@ export default function PlanTour({
       <div ref={cardRef} className="wca-tour-card" style={{ top: cardTop, left: cardLeft }}>
         <div className="wca-tour-eyebrow">
           <span className="wca-tour-step">
-            Step {step} of {TOTAL_STEPS}
+            Step {step} of {steps.length}
           </span>
           <button type="button" className="wca-tour-skip" onClick={onSkip}>
             Skip <X className="h-3.5 w-3.5" />
           </button>
         </div>
 
-        <h3 className="wca-tour-title">{content.title}</h3>
-        <p className="wca-tour-body">{content.body}</p>
+        <h3 className="wca-tour-title">{current.title}</h3>
+        <p className="wca-tour-body">{current.body}</p>
 
         <div className="wca-tour-foot">
           <div className="wca-tour-dots">
-            {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+            {steps.map((_, i) => (
               <span
                 key={i}
                 className={i + 1 === step ? 'wca-tour-pdot wca-tour-pdot-on' : 'wca-tour-pdot'}
@@ -163,54 +162,19 @@ export default function PlanTour({
             ))}
           </div>
 
-          {step === 2 ? (
-            // De gids drukt zelf; stap 3 komt vanzelf zodra de run loopt.
-            <span className="wca-tour-hint">↑ Press the button</span>
-          ) : step === 3 ? (
-            <span className="wca-tour-hint">Planning…</span>
-          ) : (
+          {current.button ? (
             <button
               type="button"
               className="wca-tour-next"
-              onClick={step === 4 ? onFinish : onNext}
+              onClick={isLast ? onFinish : onNext}
             >
-              {content.button}
+              {current.button}
             </button>
+          ) : (
+            <span className="wca-tour-hint">{current.hint}</span>
           )}
         </div>
       </div>
     </div>
   )
-}
-
-function stepContent(
-  step: number,
-  data: { orderCount: number; insightCount: number },
-): { title: string; body: string; button: string } {
-  switch (step) {
-    case 1:
-      return {
-        title: 'Everything the plan needs',
-        body: `${data.orderCount} orders for next week, and the people who could run them. Today a planner pulls this together by hand from four different systems, and it takes an afternoon.`,
-        button: 'Next',
-      }
-    case 2:
-      return {
-        title: 'One button does the pulling',
-        body: 'ERP for orders and invoices, WMS for material, HR for absence, SharePoint for certificates. Nobody copies anything into a spreadsheet.',
-        button: 'Next',
-      }
-    case 3:
-      return {
-        title: 'The plan builds itself',
-        body: 'Every order gets a line, a day and someone qualified to run it — checked against all four systems as it lands.',
-        button: 'Next',
-      }
-    default:
-      return {
-        title: 'What is left for the planner',
-        body: `${data.insightCount} things worth a look, each with the system that raised it and a way to settle it. That is the job now: not building the plan, but checking the exceptions.`,
-        button: 'Done',
-      }
-  }
 }

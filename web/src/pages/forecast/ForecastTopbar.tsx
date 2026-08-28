@@ -1,10 +1,20 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Settings } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import '../workforce.css'
+
+type ForecastTopbarProps = {
+  tourRunning: boolean
+  tourCompleted: boolean
+  onStartTour: () => void
+}
 
 // Reuses the exact Workforce Call Agent topbar (glow, pills, tour button, logo).
 // Only the breadcrumb is specific to the Forecast Detail page.
-export default function ForecastTopbar() {
+export default function ForecastTopbar({
+  tourRunning,
+  tourCompleted,
+  onStartTour,
+}: ForecastTopbarProps) {
   return (
     <div className="wca-topbar">
       <div className="wca-topbar-glow" />
@@ -25,13 +35,9 @@ export default function ForecastTopbar() {
       </div>
 
       <div className="flex items-center gap-2">
-        <button type="button" className="wca-tour-btn">
+        <button type="button" onClick={onStartTour} className="wca-tour-btn">
           <span className="wca-tour-btn-dot" />
-          Start tour
-        </button>
-        <button type="button" className="wca-topbar-pill">
-          <Settings className="h-3.5 w-3.5" />
-          Settings
+          {tourRunning ? 'Tour active · Esc to stop' : tourCompleted ? 'Tour again' : 'Start tour'}
         </button>
         <img
           src="/sixth-generation-logo.png"

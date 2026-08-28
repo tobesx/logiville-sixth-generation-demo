@@ -303,14 +303,6 @@
   transform: translateX(8px);
 }
 
-.ico-truncate-two {
-  display: -webkit-box;
-  max-width: 100%;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
 [data-radix-dialog-overlay],
 [data-radix-portal] [data-state='open'].fixed.inset-0,
 [data-state='open'].fixed.inset-0 {

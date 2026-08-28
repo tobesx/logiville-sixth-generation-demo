@@ -5,7 +5,6 @@ type ChartProps = {
   adjusted: number[]
   prevYear: number[]
   budget: number[]
-  hasEdits: boolean
   confidenceOn: boolean
   onToggleConfidence: () => void
   selectedWeek: number | null
@@ -37,7 +36,6 @@ export default function ForecastChart({
   adjusted,
   prevYear,
   budget,
-  hasEdits,
   confidenceOn,
   onToggleConfidence,
   selectedWeek,
@@ -75,7 +73,7 @@ export default function ForecastChart({
   const vsBudgetPositive = vsBudget >= 0
 
   return (
-    <section className="fc-card" style={{ overflow: 'hidden' }}>
+    <section className="fc-card" data-tour="fc-chart" style={{ overflow: 'hidden' }}>
       <div className="fc-card-head" style={{ display: 'flex', alignItems: 'flex-start' }}>
         <div style={{ minWidth: 0 }}>
           <div className="fc-card-title">Total volume — forecast vs. adjusted vs. last year</div>
@@ -201,8 +199,10 @@ export default function ForecastChart({
             fill="none"
             stroke="#0A2540"
             strokeWidth={2.4}
-            strokeDasharray={hasEdits ? undefined : '2 4'}
-            opacity={hasEdits ? 1 : 0.55}
+            // Gestippeld en gedempt: de aangepaste lijn volgt bewerkingen die
+            // in deze read-only demo niet gemaakt kunnen worden.
+            strokeDasharray="2 4"
+            opacity={0.55}
           />
 
           {selectedWeek !== null ? (

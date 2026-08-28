@@ -35,7 +35,7 @@ export default function ForecastGrid({
   onSelectWeek,
 }: GridProps) {
   return (
-    <section className="fc-card" style={{ overflow: 'hidden' }}>
+    <section className="fc-card" data-tour="fc-grid" style={{ overflow: 'hidden' }}>
       <div className="fc-grid-strip">
         <span>
           <strong style={{ color: '#0A2540' }}>Click a week</strong> to work on the whole column.

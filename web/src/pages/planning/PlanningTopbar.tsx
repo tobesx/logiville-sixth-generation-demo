@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Settings } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import '../workforce.css'
 
 type PlanningTopbarProps = {
@@ -38,10 +38,6 @@ export default function PlanningTopbar({
         <button type="button" onClick={onStartTour} className="wca-tour-btn">
           <span className="wca-tour-btn-dot" />
           {tourRunning ? 'Tour active · Esc to stop' : tourCompleted ? 'Tour again' : 'Start tour'}
-        </button>
-        <button type="button" className="wca-topbar-pill">
-          <Settings className="h-3.5 w-3.5" />
-          Settings
         </button>
         <img
           src="/sixth-generation-logo.png"

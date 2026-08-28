@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search, MoreHorizontal } from 'lucide-react'
 import ForecastTopbar from './forecast/ForecastTopbar'
+import TourOverlay from './ui/TourOverlay'
+import { FORECAST_STEPS } from './forecast/forecastSteps'
 import ForecastSidebar from './forecast/ForecastSidebar'
 import ForecastGrid from './forecast/ForecastGrid'
 import ForecastChart from './forecast/ForecastChart'
@@ -37,6 +39,8 @@ export default function ForecastDetail() {
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
   const [confidenceOn, setConfidenceOn] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
+  const [tourStep, setTourStep] = useState(0)
+  const [tourCompleted, setTourCompleted] = useState(false)
 
   const rowHasAlert = (sku: Sku) => WEEK_LABELS.some((_, w) => isAlert(sku, w, edits))
 
@@ -139,7 +143,11 @@ export default function ForecastDetail() {
 
   return (
     <div className="fc-app">
-      <ForecastTopbar />
+      <ForecastTopbar
+        tourRunning={tourStep > 0}
+        tourCompleted={tourCompleted}
+        onStartTour={() => setTourStep(1)}
+      />
 
       <div className="fc-body">
         <ForecastSidebar />
@@ -274,7 +282,6 @@ export default function ForecastDetail() {
               adjusted={adjusted}
               prevYear={prevYear}
               budget={budget}
-              hasEdits={false}
               confidenceOn={confidenceOn}
               onToggleConfidence={() => setConfidenceOn((v) => !v)}
               selectedWeek={selectedWeek}
@@ -283,7 +290,7 @@ export default function ForecastDetail() {
               vsLastYear={vsLastYear}
               vsBudget={vsBudget}
             />
-            <ForecastDrivers insight={insight} hasEdits={false} />
+            <ForecastDrivers insight={insight} />
           </div>
         </div>
       </div>
@@ -293,6 +300,19 @@ export default function ForecastDetail() {
           <span className="fc-toast-dot" />
           {toast}
         </div>
+      ) : null}
+
+      {tourStep > 0 ? (
+        <TourOverlay
+          step={tourStep}
+          steps={FORECAST_STEPS}
+          onNext={() => setTourStep((step) => step + 1)}
+          onFinish={() => {
+            setTourStep(0)
+            setTourCompleted(true)
+          }}
+          onSkip={() => setTourStep(0)}
+        />
       ) : null}
     </div>
   )
