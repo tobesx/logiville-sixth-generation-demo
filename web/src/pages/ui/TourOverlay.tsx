@@ -36,6 +36,15 @@ type Rect = { top: number; left: number; w: number; h: number }
  * die op een klik wacht. Wie die ooit hierheen haalt, moet die drie dingen
  * eerst een plek geven.
  */
+/**
+ * Hoe vaak de spotlight zijn doel opmeet. Stond op elke frame, en elke meting
+ * is een getBoundingClientRect() — een geforceerde layout over de hele DOM, op
+ * Forecast Detail een grid van zestien kolommen. Tien keer per seconde volgt
+ * een schuivend paneel nog steeds vloeiend genoeg, en de main thread mag
+ * tussendoor slapen.
+ */
+const MEASURE_INTERVAL_MS = 100
+
 function measure(selector: string): Rect | null {
   const el = document.querySelector(`[data-tour="${selector}"]`)
   if (!el) return null
@@ -65,16 +74,14 @@ export default function TourOverlay({ step, steps, onNext, onFinish, onSkip }: T
   // Blijven meten: panelen groeien en schuiven terwijl een demo loopt.
   useEffect(() => {
     if (!target) return
-    let raf = 0
-    const tick = () => {
+    const sample = () =>
       setRect((prev) => {
         const next = measure(target)
         return differs(prev, next) ? next : prev
       })
-      raf = window.requestAnimationFrame(tick)
-    }
-    raf = window.requestAnimationFrame(tick)
-    return () => window.cancelAnimationFrame(raf)
+    sample()
+    const timer = window.setInterval(sample, MEASURE_INTERVAL_MS)
+    return () => window.clearInterval(timer)
   }, [target])
 
   useLayoutEffect(() => {

@@ -252,7 +252,6 @@
 .ico-badge-calling {
   background: rgba(237, 174, 73, 0.08);
   color: var(--accent-brand);
-  animation: icoPulse 1.5s ease infinite;
 }
 
 .ico-live-dot {
@@ -260,7 +259,6 @@
   height: 8px;
   border-radius: 999px;
   background: var(--success-brand);
-  animation: icoPulse 1.5s ease infinite;
 }
 
 .ico-switch[data-state='checked'] {
@@ -307,13 +305,4 @@
 [data-radix-portal] [data-state='open'].fixed.inset-0,
 [data-state='open'].fixed.inset-0 {
   background: rgba(0, 0, 0, 0.65) !important;
-}
-
-@keyframes icoPulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
 }

@@ -361,10 +361,6 @@
   to { opacity: 1; transform: none; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pp-slot-filled { animation: none; }
-}
-
 .pp-slot-attention {
   border-color: var(--accent-brand);
   background: var(--accent-dim);

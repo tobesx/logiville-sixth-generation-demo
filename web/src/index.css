@@ -43,3 +43,24 @@ body {
   overscroll-behavior: contain;
   touch-action: pan-y;
 }
+
+/* Eén noodrem voor de eenmalige entry-animaties die overblijven. Chromium op
+   de Raspberry Pi kun je met --force-prefers-reduced-motion starten; zonder
+   dit blok deed die vlag niets, want geen enkele animatie zat erachter. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Het enige element met opacity: 0 als basisstijl; het leunt op de
+     forwards-fill van zijn animatie om zichtbaar te worden. Getest met de
+     query tijdelijk op `all`: zonder deze regel bleven de kaarten zwart, en
+     zonder !important ook, want launcher.css staat later in de cascade. */
+  .launcher-rise {
+    opacity: 1 !important;
+  }
+}

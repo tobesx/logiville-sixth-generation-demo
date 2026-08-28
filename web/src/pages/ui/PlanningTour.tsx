@@ -36,6 +36,15 @@ const TARGET_BY_STEP: Record<number, string | null> = {
 
 const TOTAL_STEPS = 5
 
+/**
+ * Hoe vaak de spotlight zijn doel opmeet. Stond op elke frame, en elke meting
+ * is een getBoundingClientRect() — een geforceerde layout over de hele DOM, op
+ * Forecast Detail een grid van zestien kolommen. Tien keer per seconde volgt
+ * een schuivend paneel nog steeds vloeiend genoeg, en de main thread mag
+ * tussendoor slapen.
+ */
+const MEASURE_INTERVAL_MS = 100
+
 function measure(selector: string | null): Rect | null {
   if (!selector) return null
   const el = document.querySelector(`[data-tour="${selector}"]`)
@@ -75,16 +84,14 @@ export default function PlanningTour({
 
   // Continuously measure the target so the spotlight tracks slide-ins, scroll and resize.
   useEffect(() => {
-    let raf = 0
-    const tick = () => {
+    const sample = () =>
       setRect((prev) => {
         const next = measure(selector)
         return rectsDiffer(prev, next) ? next : prev
       })
-      raf = window.requestAnimationFrame(tick)
-    }
-    raf = window.requestAnimationFrame(tick)
-    return () => window.cancelAnimationFrame(raf)
+    sample()
+    const timer = window.setInterval(sample, MEASURE_INTERVAL_MS)
+    return () => window.clearInterval(timer)
   }, [selector])
 
   useLayoutEffect(() => {

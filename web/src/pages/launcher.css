@@ -23,7 +23,9 @@
     linear-gradient(to right, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
   background-size: 56px 56px;
-  mask-image: radial-gradient(120% 100% at 50% 0%, #000 40%, transparent 90%);
+  /* Stond hier een mask-image over de volle viewport. Die dwong een extra
+     compositielaag af voor een raster van alpha 0.02 — op de Pi betaal je
+     daar schermvullend textuurgeheugen voor, en zien doe je het amper. */
   pointer-events: none;
 }
 
@@ -52,13 +54,6 @@
     border-color 220ms ease,
     box-shadow 220ms ease,
     background-color 220ms ease;
-  will-change: transform;
-}
-
-.demo-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--border-soft);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
 }
 
 .demo-card:focus-visible {
@@ -70,21 +65,37 @@
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), color 220ms ease, background-color 220ms ease;
 }
 
-.demo-card:hover .demo-icon-wrap {
-  color: var(--accent-brand);
-  background: var(--accent-dim);
-}
-
 .demo-card .demo-cta {
   transition: color 200ms ease, gap 200ms ease;
 }
 
-.demo-card:hover .demo-cta {
-  color: var(--accent-brand);
-}
+/* Het kioskscherm heeft geen aanwijzer. Daar bleef een hover-staat na een tap
+   gewoon hangen, en de transform promoveerde de kaart alsnog naar een eigen
+   laag. Op een laptop werkt alles als voorheen. */
+@media (hover: hover) {
+  .demo-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-soft);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  }
 
-.demo-card:hover .demo-cta-arrow {
-  transform: translateX(5px);
+  .demo-card:hover .demo-icon-wrap {
+    color: var(--accent-brand);
+    background: var(--accent-dim);
+  }
+
+  .demo-card:hover .demo-cta {
+    color: var(--accent-brand);
+  }
+
+  .demo-card:hover .demo-cta-arrow {
+    transform: translateX(5px);
+  }
+
+  .demo-card-featured:hover {
+    border-color: var(--accent-brand);
+    box-shadow: 0 0 0 1px rgba(237, 174, 73, 0.35), 0 40px 80px rgba(0, 0, 0, 0.5);
+  }
 }
 
 .demo-cta-arrow {
@@ -100,12 +111,11 @@
   box-shadow: 0 0 0 1px rgba(237, 174, 73, 0.12), 0 30px 60px rgba(0, 0, 0, 0.4);
 }
 
-.demo-card-featured:hover {
-  border-color: var(--accent-brand);
-  box-shadow: 0 0 0 1px rgba(237, 174, 73, 0.35), 0 40px 80px rgba(0, 0, 0, 0.5);
-}
-
-/* Ambient glow orb inside the featured card */
+/* Ambient glow orb inside the featured card.
+   Was een blur(6px) met een oneindige scale-animatie. Een geblurde laag
+   opschalen laat de blur elke frame opnieuw rasteren — op een Pi hield dat
+   in z'n eentje de compositor wakker op een pagina waar niets gebeurt. De
+   gradient is al zacht, dus de blur voegde niets toe. */
 .demo-card-featured::after {
   content: '';
   position: absolute;
@@ -114,14 +124,8 @@
   width: 55%;
   height: 70%;
   background: radial-gradient(circle, rgba(237, 174, 73, 0.22) 0%, rgba(237, 174, 73, 0) 70%);
-  filter: blur(6px);
-  animation: launcherGlow 6s ease-in-out infinite;
+  opacity: 0.8;
   pointer-events: none;
-}
-
-@keyframes launcherGlow {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.12); }
 }
 
 .featured-outline-icon {
