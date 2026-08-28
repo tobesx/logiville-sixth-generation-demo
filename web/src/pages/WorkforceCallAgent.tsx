@@ -430,7 +430,25 @@ export default function WorkforceCallAgent() {
     setTourStep(1)
   }
 
-  const skipTour = () => setTourStep(0)
+  const skipTour = () => {
+    setTourStep(0)
+    // De rondleiding laat de HR-overlay bewust openstaan tot de gids op
+    // "Start calling" drukt. Wie daar wegklikte liet hem staan: schermvullend,
+    // zonder sluitknop, over de topbar heen. De demo was dan dood tot iemand
+    // de pagina herlaadde. De run is al gevraagd, dus we zetten hem door.
+    if (pendingCallsRef.current) {
+      // De resterende overlay-stappen staan nog als timers klaar. Zonder deze
+      // regel zetten die overlayStep meteen weer terug en stond de overlay er
+      // opnieuw. Eerst opruimen, dan bellen — beginCalls zet daarna zijn eigen
+      // timers neer.
+      timersRef.current.forEach((id) => window.clearTimeout(id))
+      timersRef.current = []
+      setOverlayStep(null)
+      const startCalls = pendingCallsRef.current
+      pendingCallsRef.current = null
+      startCalls()
+    }
+  }
 
   const finishTour = () => {
     setTourStep(0)
@@ -444,6 +462,12 @@ export default function WorkforceCallAgent() {
     // lezen dat er nog niemand gebeld is.
     if (tourStep > 0 && tourStep < 3 && phase === 'running') setTourStep(3)
     if (tourStep === 4 && phase === 'complete') setTourStep(5)
+    // Stap 3 en 4 horen bij een lopende run, stap 5 bij het resultaat. Een
+    // reset zet de fase terug en die stappen tekenen dan niets, terwijl de
+    // topbar "Tour active" bleef melden — zonder toetsenbord kwam je daar niet
+    // meer uit. Ongeldige stap betekent nu: rondleiding afgelopen.
+    if ((tourStep === 3 || tourStep === 4) && phase === 'idle') setTourStep(0)
+    if (tourStep === 5 && phase !== 'complete') setTourStep(0)
     // Drawer dicht, maar het antwoordenpaneel blijft open: stap 4 wijst naar
     // de bovenste resultaatkaart, en die staat daarin.
     if (tourStep > 0 && phase === 'complete') setSelectedBlockKey(null)
@@ -578,7 +602,10 @@ export default function WorkforceCallAgent() {
         <AppTopBar
           tourRunning={tourStep > 0}
           tourCompleted={tourCompleted}
-          onStartTour={startTour}
+          // Stond op startTour, ook tijdens een lopende rondleiding: dan
+          // herstartte hij hem terwijl het label "stop" beloofde. Op een
+          // touchscreen was dat de enige knop en dus de enige uitweg.
+          onStartTour={tourStep > 0 ? skipTour : startTour}
           onSettings={() => (settingsUnlocked ? setSettingsOpen(true) : setPasswordOpen(true))}
         />
 

@@ -55,6 +55,11 @@ export default function ProductionPlanning() {
   useEffect(() => {
     if (tourStep > 0 && tourStep < 3 && phase !== 'idle') setTourStep(3)
     if (tourStep === 3 && phase === 'complete') setTourStep(4)
+    // Stap 3 hoort bij een lopende run, stap 4 bij het afgeronde plan. Wie op
+    // Reset drukte, hield een rondleiding die niets meer tekende terwijl de
+    // topbar "Tour active" bleef melden. Ongeldige stap betekent nu: afgelopen.
+    if (tourStep === 3 && phase === 'idle') setTourStep(0)
+    if (tourStep === 4 && phase !== 'complete') setTourStep(0)
   }, [tourStep, phase])
 
   const reset = () => {
@@ -123,6 +128,13 @@ export default function ProductionPlanning() {
           tourRunning={tourStep > 0}
           tourCompleted={tourCompleted}
           onStartTour={() => {
+            // Tijdens een rondleiding stopt deze knop hem. Stond hier eerder
+            // onvoorwaardelijk een herstart, terwijl het label "stop" beloofde
+            // — en op een touchscreen is dit de enige knop die je hebt.
+            if (tourStep > 0) {
+              setTourStep(0)
+              return
+            }
             // Zonder reset staat phase nog op 'complete' van de vorige ronde,
             // en springt de tour meteen door naar de laatste stap.
             reset()

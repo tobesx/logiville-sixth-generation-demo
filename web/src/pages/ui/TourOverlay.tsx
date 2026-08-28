@@ -71,6 +71,20 @@ export default function TourOverlay({ step, steps, onNext, onFinish, onSkip }: T
 
   const target = current?.target ?? ''
 
+  // Het doel in beeld brengen. De Call Agent en het planbord passen op één
+  // scherm, maar Forecast Detail scrollt — daar staat de grafiek onder de
+  // vouw en zou de kaart naar een leeg stuk scherm wijzen.
+  //
+  // Staat bewust vóór de meting hieronder, en springt zonder animatie. Met
+  // `behavior: 'smooth'` mat de eerste meting de positie van vóór de scroll,
+  // en jaagde de kaart een halve seconde lang het anker achterna — op een
+  // Raspberry Pi lang genoeg om ernaast te tikken.
+  useEffect(() => {
+    if (!target) return
+    const el = document.querySelector(`[data-tour="${target}"]`)
+    el?.scrollIntoView({ block: 'center', behavior: 'auto' })
+  }, [target])
+
   // Blijven meten: panelen groeien en schuiven terwijl een demo loopt.
   useEffect(() => {
     if (!target) return
@@ -88,14 +102,6 @@ export default function TourOverlay({ step, steps, onNext, onFinish, onSkip }: T
     if (cardRef.current) setCardH(cardRef.current.offsetHeight)
   })
 
-  // Het doel in beeld brengen. De Call Agent en het planbord passen op één
-  // scherm, maar Forecast Detail scrollt — daar staat de grafiek onder de
-  // vouw en zou de kaart naar een leeg stuk scherm wijzen.
-  useEffect(() => {
-    if (!target) return
-    const el = document.querySelector(`[data-tour="${target}"]`)
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [target])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -129,15 +135,18 @@ export default function TourOverlay({ step, steps, onNext, onFinish, onSkip }: T
   let cardTop: number
   let cardLeft: number
 
+  // De 18px-ondergrens komt als laatste. Andersom won de bovengrens zodra het
+  // venster korter of smaller was dan de kaart, en dan zette die berekening de
+  // kaart buiten beeld in plaats van tegen de rand.
   if (fitsBelow || fitsAbove) {
     cardTop = fitsBelow ? rect.top + rect.h + 16 : rect.top - 16 - cardH
     const centred = rect.left + rect.w / 2 - cardW / 2
-    cardLeft = Math.min(Math.max(18, centred), vw - cardW - 18)
+    cardLeft = Math.max(18, Math.min(centred, vw - cardW - 18))
   } else {
     const roomRight = vw - (rect.left + rect.w) - 16
     const toRight = roomRight >= cardW + 18
     cardLeft = toRight ? rect.left + rect.w + 16 : Math.max(18, rect.left - 16 - cardW)
-    cardTop = Math.min(Math.max(18, rect.top + rect.h / 2 - cardH / 2), vh - cardH - 18)
+    cardTop = Math.max(18, Math.min(rect.top + rect.h / 2 - cardH / 2, vh - cardH - 18))
   }
 
   const isLast = step === steps.length

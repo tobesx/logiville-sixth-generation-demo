@@ -14,11 +14,10 @@ export default function AppTopBar({
   onStartTour,
   onSettings,
 }: AppTopBarProps) {
-  const tourLabel = tourRunning
-    ? 'Tour active · Esc to stop'
-    : tourCompleted
-      ? 'Tour again'
-      : 'Start tour'
+  // "Esc to stop" was het enige dat er stond, en het kioskscherm heeft geen
+  // toetsenbord. Escape blijft werken, maar het label noemt nu wat je kunt
+  // aanraken.
+  const tourLabel = tourRunning ? 'Stop tour' : tourCompleted ? 'Tour again' : 'Start tour'
   return (
     <div className="wca-topbar">
       <div className="wca-topbar-glow" />

@@ -37,7 +37,10 @@ export default function ForecastTopbar({
       <div className="flex items-center gap-2">
         <button type="button" onClick={onStartTour} className="wca-tour-btn">
           <span className="wca-tour-btn-dot" />
-          {tourRunning ? 'Tour active · Esc to stop' : tourCompleted ? 'Tour again' : 'Start tour'}
+          {/* "Esc to stop" was het enige dat er stond; het kioskscherm heeft
+              geen toetsenbord. Escape blijft werken, het label noemt nu wat je
+              kunt aanraken. */}
+          {tourRunning ? 'Stop tour' : tourCompleted ? 'Tour again' : 'Start tour'}
         </button>
         <img
           src="/sixth-generation-logo.png"

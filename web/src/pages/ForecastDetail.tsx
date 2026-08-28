@@ -146,7 +146,10 @@ export default function ForecastDetail() {
       <ForecastTopbar
         tourRunning={tourStep > 0}
         tourCompleted={tourCompleted}
-        onStartTour={() => setTourStep(1)}
+        // Tijdens een rondleiding stopt deze knop hem. Stond hier onvoorwaardelijk
+        // setTourStep(1), dus tikken op "Esc to stop" sprong terug naar stap 1 —
+        // en het kioskscherm heeft geen toets om het wél te stoppen.
+        onStartTour={() => setTourStep((step) => (step > 0 ? 0 : 1))}
       />
 
       <div className="fc-body">
