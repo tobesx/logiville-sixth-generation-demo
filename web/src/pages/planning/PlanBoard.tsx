@@ -1,21 +1,46 @@
 import { cn } from '../../lib/shadcn/utils'
-import { AlertTriangle } from 'lucide-react'
-import { DAYS, LINES, ORDERS, flagById, type Order } from './data'
+import { Plus } from 'lucide-react'
+import { Avatar } from './SidePane'
+import type { Selection } from './SidePane'
+import {
+  DAYS,
+  LINES,
+  orderById,
+  slotKey,
+  workerById,
+  type Day,
+  type Insight,
+  type Placement,
+} from './data'
 
 type PlanBoardProps = {
-  selectedOrderId: string | null
-  onSelectOrder: (order: Order) => void
+  placements: Record<string, Placement>
+  insights: Insight[]
+  selection: Selection
+  highlightedSlot: string | null
+  onSlotTap: (lineId: string, day: Day) => void
 }
 
 /**
- * Het weekbord: productielijnen als rijen, maandag tot vrijdag als kolommen.
+ * Het planbord: lijnen als rijen, maandag tot vrijdag als kolommen.
  *
- * Opgezet als één CSS-grid in plaats van per rij een tijdlijn, omdat orders
- * over meerdere dagen lopen en `grid-column: span` dat zonder rekenwerk
- * afhandelt. De lanes uit de Call Agent doen hetzelfde met percentages, maar
- * die hebben een continue tijdas; hier zijn het vijf vaste vakken.
+ * Een leeg slot neemt een order aan, een gevuld slot een medewerker. Welke van
+ * de twee er gebeurt hangt af van wat er links geselecteerd staat; het slot
+ * laat dat zien in plaats van het te raden.
  */
-export default function PlanBoard({ selectedOrderId, onSelectOrder }: PlanBoardProps) {
+export default function PlanBoard({
+  placements,
+  insights,
+  selection,
+  highlightedSlot,
+  onSlotTap,
+}: PlanBoardProps) {
+  const worstFor = (slot: string): Insight['severity'] | null => {
+    const own = insights.filter((i) => i.slot === slot)
+    if (own.length === 0) return null
+    return own.some((i) => i.severity === 'blocking') ? 'blocking' : 'attention'
+  }
+
   return (
     <div className="pp-board">
       <div className="pp-board-head">
@@ -29,57 +54,71 @@ export default function PlanBoard({ selectedOrderId, onSelectOrder }: PlanBoardP
         </div>
       </div>
 
-      {LINES.map((line) => {
-        const orders = ORDERS.filter((o) => o.lineId === line.id)
-        return (
-          <div key={line.id} className="pp-row">
-            <div className="pp-line">
-              <span className="pp-line-name">{line.name}</span>
-              <span className="pp-line-cap">{line.capability}</span>
-            </div>
-
-            <div className="pp-track">
-              {DAYS.map((day) => (
-                <span key={day} className="pp-slot" />
-              ))}
-
-              {orders.map((order) => {
-                const flag = flagById(order.flagId)
-                const start = DAYS.indexOf(order.day) + 1
-                return (
-                  <button
-                    key={order.id}
-                    type="button"
-                    onClick={() => onSelectOrder(order)}
-                    style={{ gridColumn: `${start} / span ${order.span}` }}
-                    className={cn(
-                      'pp-order',
-                      flag?.severity === 'blocking' && 'pp-order-blocking',
-                      flag?.severity === 'attention' && 'pp-order-attention',
-                      selectedOrderId === order.id && 'pp-order-selected',
-                    )}
-                  >
-                    <span className="pp-order-head">
-                      <span className="pp-order-product">{order.product}</span>
-                      {flag ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> : null}
-                    </span>
-                    <span className="pp-order-customer">
-                      {order.customer} · {order.quantity}
-                    </span>
-                    <span className="pp-crew">
-                      {order.crew.map((name) => (
-                        <span key={name} className="pp-crew-chip">
-                          {name}
-                        </span>
-                      ))}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+      {LINES.map((line) => (
+        <div key={line.id} className="pp-row">
+          <div className="pp-line">
+            <span className="pp-line-name">{line.name}</span>
+            <span className="pp-line-cap">{line.capability}</span>
           </div>
-        )
-      })}
+
+          <div className="pp-track">
+            {DAYS.map((day) => {
+              const slot = slotKey(line.id, day)
+              const placement = placements[slot]
+              const order = placement ? orderById(placement.orderId) : undefined
+              const worker = placement ? workerById(placement.workerId) : undefined
+              const severity = worstFor(slot)
+
+              // Alleen slots waar de huidige selectie iets kan doen lichten op.
+              const canDrop =
+                selection !== null &&
+                (selection.kind === 'order' ? !placement : Boolean(placement))
+
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => onSlotTap(line.id, day)}
+                  // Een leeg slot bevat alleen een plus-icoon en zou anders
+                  // naamloos zijn voor schermlezers en voor testgereedschap.
+                  aria-label={
+                    order
+                      ? `${line.name}, ${day}: ${order.code}, ${worker ? worker.name : 'unstaffed'}`
+                      : `${line.name}, ${day}: empty slot`
+                  }
+                  className={cn(
+                    'pp-slot',
+                    placement && 'pp-slot-filled',
+                    severity === 'attention' && 'pp-slot-attention',
+                    severity === 'blocking' && 'pp-slot-blocking',
+                    canDrop && 'pp-slot-target',
+                    highlightedSlot === slot && 'pp-slot-highlight',
+                  )}
+                >
+                  {order ? (
+                    <>
+                      <span className="pp-slot-code">{order.code}</span>
+                      {worker ? (
+                        <span className="pp-slot-worker">
+                          <Avatar worker={worker} />
+                          {worker.name}
+                        </span>
+                      ) : (
+                        <span className="pp-slot-unstaffed">Unstaffed</span>
+                      )}
+                      <span className="pp-slot-shift">{placement?.shift}</span>
+                    </>
+                  ) : (
+                    <span className="pp-slot-plus">
+                      <Plus className="h-4 w-4" />
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

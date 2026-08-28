@@ -1,130 +1,234 @@
 /**
  * Seed-data voor de Smart Production Planning demo.
  *
- * Het verhaal uit de video: de planning wordt elke week met de hand in Excel
- * gemaakt, en om de lijnen te bemannen moet er informatie uit ERP, WMS en HR
- * bij elkaar gezocht worden. Dat kost uren en gaat mis. Deze demo laat het
- * omgekeerde zien — het plan staat er al, en wat overblijft is drie
- * aandachtspunten nakijken.
+ * Het verhaal uit de video: de planner maakt de weekplanning met de hand en
+ * moet daarvoor ERP, WMS, HR en SharePoint apart raadplegen. Twee fouten
+ * bleven daardoor onopgemerkt — iemand ingepland met een vervallen
+ * heftruckcertificaat, en een order voor een klant met openstaande facturen.
  *
- * Alles hier is verzonnen en deterministisch. Geen backend, net als mockPeople.
+ * Deze demo draait het om: je plaatst iemand, en het systeem zegt meteen wat
+ * er mis mee is. De regels hieronder zijn bewust klein gehouden, maar ze staan
+ * op de gegevens en niet op vaste combinaties, zodat élke plaatsing die de
+ * gids probeert een zinnig antwoord oplevert.
+ *
+ * Alles is verzonnen en deterministisch. Geen backend.
  */
 
 export const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const
 export type Day = (typeof DAYS)[number]
 
-/** De systemen waar het plan zijn gegevens vandaan haalt. */
-export type SourceSystem = 'ERP' | 'WMS' | 'HR'
+export const SHIFTS = ['06:00–14:00', '14:00–22:00'] as const
+export type Shift = (typeof SHIFTS)[number]
+
+/** De vier systemen in de kop; elk inzicht wijst er één aan. */
+export type SourceSystem = 'ERP' | 'WMS' | 'HR' | 'SHAREPOINT'
 
 export type Severity = 'blocking' | 'attention'
+
+export type Availability = 'available' | 'leave' | 'sick'
+
+export type Worker = {
+  id: string
+  name: string
+  initials: string
+  availability: Availability
+  /** Vervaldatum van het heftruckcertificaat, of null als het niet verloopt. */
+  forkliftExpiresOn: Day | null
+  forkliftExpiryLabel?: string
+}
 
 export type Line = {
   id: string
   name: string
-  /** Waar de lijn voor bedoeld is; verschijnt onder de naam. */
   capability: string
+  /** Lijnen met zware handling vragen een geldig heftruckcertificaat. */
+  requiresForklift: boolean
+}
+
+export type Customer = {
+  name: string
+  /** Gevuld zodra er iets met de kredietstatus is. */
+  overdue?: { invoices: number; amount: string }
 }
 
 export type Order = {
   id: string
-  lineId: string
-  /** Eerste dag van de order. */
-  day: Day
-  /** Aantal dagen dat de order loopt; 1 = één dag. */
-  span: number
+  code: string
+  customer: Customer
   product: string
-  customer: string
   quantity: string
-  /** Wie de lijn bemant. Komt in het echte verhaal uit HR. */
-  crew: string[]
-  /** Verwijst naar een aandachtspunt, als er een op deze order zit. */
-  flagId?: string
+  /** Dag waarop het materiaal binnenkomt; eerder produceren kan niet. */
+  materialArrivesOn?: Day
 }
 
-export type Flag = {
+/** Eén ingevulde cel op het bord. */
+export type Placement = {
+  orderId: string
+  workerId: string | null
+  shift: Shift
+}
+
+/** Sleutel van een slot: lijn plus dag. */
+export const slotKey = (lineId: string, day: Day): string => `${lineId}|${day}`
+
+export const LINES: Line[] = [
+  { id: 'L1', name: 'Line 1', capability: 'Filling', requiresForklift: false },
+  { id: 'L2', name: 'Line 2', capability: 'Heavy handling', requiresForklift: true },
+  { id: 'L3', name: 'Line 3', capability: 'Packaging', requiresForklift: false },
+]
+
+export const WORKERS: Worker[] = [
+  {
+    id: 'W1',
+    name: 'W. Janssens',
+    initials: 'WJ',
+    availability: 'available',
+    forkliftExpiresOn: 'Wed',
+    forkliftExpiryLabel: '14/03',
+  },
+  { id: 'W2', name: 'T. Peeters', initials: 'TP', availability: 'available', forkliftExpiresOn: null },
+  { id: 'W3', name: 'K. Maes', initials: 'KM', availability: 'available', forkliftExpiresOn: null },
+  { id: 'W4', name: 'J. Vos', initials: 'JV', availability: 'available', forkliftExpiresOn: null },
+  { id: 'W5', name: 'B. De Smet', initials: 'BD', availability: 'leave', forkliftExpiresOn: null },
+  { id: 'W6', name: 'S. Claes', initials: 'SC', availability: 'sick', forkliftExpiresOn: null },
+]
+
+const VERMEIRE: Customer = { name: 'Vermeire', overdue: { invoices: 3, amount: '€ 12 400' } }
+const DOBBELS: Customer = { name: 'Dobbels' }
+const NEYTS: Customer = { name: 'Neyts' }
+const CARREFOUR: Customer = { name: 'Carrefour' }
+
+export const ORDERS: Order[] = [
+  { id: 'O-A129', code: 'A-129', customer: VERMEIRE, product: 'Detergent 5L', quantity: '18 000 u' },
+  { id: 'O-B207', code: 'B-207', customer: DOBBELS, product: 'Surface cleaner', quantity: '12 000 u' },
+  { id: 'O-C334', code: 'C-334', customer: NEYTS, product: 'Retail multipack', quantity: '9 400 u', materialArrivesOn: 'Thu' },
+
+  // Al ingepland; vullen het bord zodat de week er echt uitziet.
+  { id: 'O-A118', code: 'A-118', customer: CARREFOUR, product: 'Detergent 2L', quantity: '22 000 u' },
+  { id: 'O-A121', code: 'A-121', customer: DOBBELS, product: 'Glass cleaner', quantity: '14 000 u' },
+  { id: 'O-A125', code: 'A-125', customer: CARREFOUR, product: 'Detergent 5L', quantity: '17 500 u' },
+  { id: 'O-B204', code: 'B-204', customer: NEYTS, product: 'Bottle blend A', quantity: '4 200 kg' },
+  { id: 'O-B210', code: 'B-210', customer: DOBBELS, product: 'Bottle blend B', quantity: '6 100 kg' },
+  { id: 'O-C330', code: 'C-330', customer: CARREFOUR, product: 'Private label run', quantity: '31 000 u' },
+  { id: 'O-C336', code: 'C-336', customer: NEYTS, product: 'Export pallets', quantity: '8 800 u' },
+]
+
+/** Wat er al op het bord staat als de demo opent. */
+export const INITIAL_PLACEMENTS: Record<string, Placement> = {
+  [slotKey('L1', 'Mon')]: { orderId: 'O-A118', workerId: 'W3', shift: SHIFTS[0] },
+  [slotKey('L1', 'Tue')]: { orderId: 'O-A121', workerId: 'W4', shift: SHIFTS[1] },
+  [slotKey('L1', 'Wed')]: { orderId: 'O-A125', workerId: 'W4', shift: SHIFTS[0] },
+  [slotKey('L2', 'Mon')]: { orderId: 'O-B204', workerId: 'W4', shift: SHIFTS[0] },
+  [slotKey('L2', 'Thu')]: { orderId: 'O-B210', workerId: 'W2', shift: SHIFTS[1] },
+  [slotKey('L3', 'Mon')]: { orderId: 'O-C330', workerId: 'W2', shift: SHIFTS[1] },
+  [slotKey('L3', 'Wed')]: { orderId: 'O-C336', workerId: 'W1', shift: SHIFTS[0] },
+}
+
+/** De drie orders die nog geplaatst moeten worden, in deze volgorde. */
+export const BACKLOG_ORDER_IDS = ['O-A129', 'O-B207', 'O-C334']
+
+export const orderById = (id: string): Order | undefined => ORDERS.find((o) => o.id === id)
+export const workerById = (id: string | null): Worker | undefined =>
+  id ? WORKERS.find((w) => w.id === id) : undefined
+export const lineById = (id: string): Line | undefined => LINES.find((l) => l.id === id)
+
+const dayIndex = (day: Day): number => DAYS.indexOf(day)
+
+export type Insight = {
   id: string
   source: SourceSystem
   severity: Severity
   title: string
-  /** Wat het systeem gezien heeft. */
   detail: string
-  /** Wat het plan voorstelt. */
-  suggestion: string
-  orderId: string
+  /** Slot waar het over gaat, zodat het bord kan oplichten. */
+  slot: string
+  /** Vervangers die het probleem oplossen; leeg als er niets te kiezen valt. */
+  replacements: Worker[]
+  /** Label op de actieknop, als er een handeling bij hoort. */
+  action?: string
 }
 
-export const LINES: Line[] = [
-  { id: 'L1', name: 'Line 1', capability: 'Filling · 2 000 u/h' },
-  { id: 'L2', name: 'Line 2', capability: 'Filling · 1 400 u/h' },
-  { id: 'L3', name: 'Line 3', capability: 'Blending' },
-  { id: 'L4', name: 'Line 4', capability: 'Packaging' },
-  { id: 'L5', name: 'Line 5', capability: 'Labelling' },
-]
-
 /**
- * De drie aandachtspunten. De eerste twee komen letterlijk uit de video; de
- * derde is toegevoegd zodat alle drie de bronsystemen in beeld komen.
+ * Toetst één plaatsing aan de vier regels. Bewust klein: één regel per
+ * systeem uit de kop, zodat de gids kan neerzetten wat hij wil en er altijd
+ * iets zinnigs verschijnt in plaats van niets.
  */
-export const FLAGS: Flag[] = [
-  {
-    id: 'F1',
-    source: 'HR',
-    severity: 'attention',
-    title: 'Forklift certificate expires mid-week',
-    detail:
-      "Jens Peeters is scheduled on Line 3 through Friday, but his forklift certificate expires on Wednesday.",
-    suggestion: 'Swap in Ruben Claes from Thursday — certified until March.',
-    orderId: 'O7',
-  },
-  {
-    id: 'F2',
-    source: 'ERP',
-    severity: 'blocking',
-    title: 'Customer has overdue invoices',
-    detail:
-      'Vandermeulen NV has two invoices more than 60 days overdue, totalling € 84 200.',
-    suggestion: 'Clear with finance before this run starts on Tuesday.',
-    orderId: 'O3',
-  },
-  {
-    id: 'F3',
-    source: 'WMS',
-    severity: 'blocking',
-    title: 'Raw material arrives after the run',
-    detail:
-      'Batch of PET granulate for this order is expected Thursday; the run is planned for Tuesday.',
-    suggestion: 'Move the run to Thursday, or pull stock forward from Antwerp.',
-    orderId: 'O5',
-  },
-]
+function inspect(slot: string, placement: Placement): Insight[] {
+  const [lineId, day] = slot.split('|') as [string, Day]
+  const line = lineById(lineId)
+  const order = orderById(placement.orderId)
+  const worker = workerById(placement.workerId)
+  if (!line || !order) return []
 
-export const ORDERS: Order[] = [
-  // Line 1
-  { id: 'O1', lineId: 'L1', day: 'Mon', span: 2, product: 'Detergent 5L', customer: 'Delhaize', quantity: '18 000 u', crew: ['Anke Willems', 'Elias Van Damme'] },
-  { id: 'O2', lineId: 'L1', day: 'Wed', span: 3, product: 'Detergent 2L', customer: 'Colruyt', quantity: '26 500 u', crew: ['Anke Willems', 'Jan Hermans'] },
+  const found: Insight[] = []
 
-  // Line 2
-  { id: 'O3', lineId: 'L2', day: 'Tue', span: 2, product: 'Surface cleaner', customer: 'Vandermeulen NV', quantity: '12 000 u', crew: ['Femke Coppens'], flagId: 'F2' },
-  { id: 'O4', lineId: 'L2', day: 'Thu', span: 2, product: 'Glass cleaner', customer: 'Delhaize', quantity: '9 400 u', crew: ['Femke Coppens', 'Aline Lambert'] },
+  // SHAREPOINT — bevoegdheden. Het voorbeeld uit de video.
+  if (
+    worker &&
+    line.requiresForklift &&
+    worker.forkliftExpiresOn !== null &&
+    dayIndex(day) >= dayIndex(worker.forkliftExpiresOn)
+  ) {
+    found.push({
+      id: `${slot}-cert`,
+      source: 'SHAREPOINT',
+      severity: 'attention',
+      title: `Forklift certificate expires on ${worker.forkliftExpiryLabel ?? worker.forkliftExpiresOn}`,
+      detail: `${worker.name} is no longer allowed to operate ${line.name} from ${worker.forkliftExpiresOn}.`,
+      slot,
+      replacements: WORKERS.filter(
+        (w) => w.availability === 'available' && w.forkliftExpiresOn === null && w.id !== worker.id,
+      ).slice(0, 2),
+      action: undefined,
+    })
+  }
 
-  // Line 3
-  { id: 'O5', lineId: 'L3', day: 'Tue', span: 1, product: 'Bottle blend A', customer: 'Internal', quantity: '4 200 kg', crew: ['Bram De Clercq'], flagId: 'F3' },
-  { id: 'O7', lineId: 'L3', day: 'Wed', span: 3, product: 'Bottle blend B', customer: 'Internal', quantity: '11 800 kg', crew: ['Jens Peeters', 'Arne Janssens'], flagId: 'F1' },
+  // ERP — orders, klanten en facturen. Het tweede voorbeeld uit de video.
+  if (order.customer.overdue) {
+    found.push({
+      id: `${slot}-credit`,
+      source: 'ERP',
+      severity: 'blocking',
+      title: `Customer ${order.customer.name} — ${order.customer.overdue.invoices} overdue invoices`,
+      detail: `${order.customer.overdue.amount} outstanding — credit limit reached.`,
+      slot,
+      replacements: [],
+      action: 'Request release',
+    })
+  }
 
-  // Line 4
-  { id: 'O8', lineId: 'L4', day: 'Mon', span: 3, product: 'Retail multipack', customer: 'Colruyt', quantity: '31 000 u', crew: ['Emma Segers', 'Milan Van Damme'] },
-  { id: 'O9', lineId: 'L4', day: 'Thu', span: 2, product: 'Export pallets', customer: 'Carrefour FR', quantity: '14 200 u', crew: ['Emma Segers'] },
+  // WMS — voorraad en materiaal.
+  if (order.materialArrivesOn && dayIndex(day) < dayIndex(order.materialArrivesOn)) {
+    found.push({
+      id: `${slot}-material`,
+      source: 'WMS',
+      severity: 'blocking',
+      title: 'Raw material arrives after the run',
+      detail: `Material for ${order.code} is expected ${order.materialArrivesOn}; this run is planned ${day}.`,
+      slot,
+      replacements: [],
+      action: 'Move to ' + order.materialArrivesOn,
+    })
+  }
 
-  // Line 5
-  { id: 'O10', lineId: 'L5', day: 'Mon', span: 2, product: 'Private label run', customer: 'Colruyt', quantity: '22 000 u', crew: ['Nadia Timmermans'] },
-  { id: 'O11', lineId: 'L5', day: 'Thu', span: 1, product: 'Relabel batch', customer: 'Delhaize', quantity: '3 100 u', crew: ['Vince Michiels'] },
-]
+  // HR — verlof en ziekte. Zulke mensen zijn links niet aantikbaar, maar wie
+  // er toch belandt moet niet stil doorglippen.
+  if (worker && worker.availability !== 'available') {
+    found.push({
+      id: `${slot}-availability`,
+      source: 'HR',
+      severity: 'blocking',
+      title: `${worker.name} is not available`,
+      detail: worker.availability === 'sick' ? 'Reported sick this week.' : 'On leave this week.',
+      slot,
+      replacements: WORKERS.filter((w) => w.availability === 'available').slice(0, 2),
+    })
+  }
 
-export const flagById = (id: string | undefined): Flag | undefined =>
-  id ? FLAGS.find((f) => f.id === id) : undefined
+  return found
+}
 
-export const orderById = (id: string): Order | undefined => ORDERS.find((o) => o.id === id)
-
-/** Hoeveel mensen er deze week ingepland staan, ongeacht op hoeveel orders. */
-export const crewCount = (): number =>
-  new Set(ORDERS.flatMap((o) => o.crew)).size
+/** Alle inzichten voor de huidige stand van het bord. */
+export function inspectAll(placements: Record<string, Placement>): Insight[] {
+  return Object.entries(placements).flatMap(([slot, placement]) => inspect(slot, placement))
+}

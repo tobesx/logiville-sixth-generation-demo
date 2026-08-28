@@ -1,99 +1,140 @@
-import { useState } from 'react'
-import { CheckCircle2, Database, Factory, Users } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import PlanningTopbar from './planning/PlanningTopbar'
 import PlanBoard from './planning/PlanBoard'
-import FlagsPanel from './planning/FlagsPanel'
-import { FLAGS, LINES, ORDERS, crewCount, type Flag, type Order } from './planning/data'
+import SidePane, { type Selection } from './planning/SidePane'
+import InsightsPanel from './planning/InsightsPanel'
+import {
+  BACKLOG_ORDER_IDS,
+  INITIAL_PLACEMENTS,
+  SHIFTS,
+  inspectAll,
+  slotKey,
+  type Day,
+  type Insight,
+  type Placement,
+  type Worker,
+} from './planning/data'
 import './ico.css'
 import './planning/planning.css'
+
+const SYSTEMS = ['ERP', 'WMS', 'HR', 'SHAREPOINT'] as const
 
 /**
  * Smart Production Planning.
  *
- * De demo laat niet zien dát er een planning is, maar dat hij al gemaakt is.
- * Vandaar dat het scherm opent op een afgerond plan met drie aandachtspunten
- * ernaast — uren plannen wordt een kwartier nakijken.
+ * De video laat zien hoe de planner met de hand een weekplanning maakt en
+ * daarvoor vier systemen apart moet raadplegen — waardoor twee fouten
+ * wekenlang onopgemerkt bleven. Deze demo draait dat om: je zet iemand neer en
+ * hoort meteen wat eraan schort.
+ *
+ * Tikken in plaats van slepen: op een aanraakscherm wordt een sleep te vaak
+ * een veeg, en dan scrollt de pagina in plaats van dat er iets verplaatst.
  */
 export default function ProductionPlanning() {
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  const [placements, setPlacements] = useState<Record<string, Placement>>(INITIAL_PLACEMENTS)
+  const [backlog, setBacklog] = useState<string[]>(BACKLOG_ORDER_IDS)
+  const [selection, setSelection] = useState<Selection>(null)
+  const [resolved, setResolved] = useState<Set<string>>(new Set())
+  const [highlightedSlot, setHighlightedSlot] = useState<string | null>(null)
 
-  const select = (id: string) => setSelectedOrderId((current) => (current === id ? null : id))
+  const insights = useMemo(() => inspectAll(placements), [placements])
+  const openInsights = insights.filter((i) => !resolved.has(i.id))
+
+  const tapSlot = (lineId: string, day: Day) => {
+    if (!selection) return
+    const slot = slotKey(lineId, day)
+    const existing = placements[slot]
+
+    if (selection.kind === 'order') {
+      // Een order gaat alleen op een leeg slot; een bezet slot overschrijven
+      // zou stilletjes werk weggooien.
+      if (existing) return
+      setPlacements((current) => ({
+        ...current,
+        [slot]: { orderId: selection.id, workerId: null, shift: SHIFTS[0] },
+      }))
+      setBacklog((current) => current.filter((id) => id !== selection.id))
+      setSelection(null)
+      return
+    }
+
+    // Een medewerker heeft een order nodig om aan te werken.
+    if (!existing) return
+    setPlacements((current) => ({
+      ...current,
+      [slot]: { ...existing, workerId: selection.id },
+    }))
+    setSelection(null)
+  }
+
+  /**
+   * Een voorgestelde vervanger overnemen. Het inzicht verdwijnt daarna vanzelf,
+   * want het wordt opnieuw afgeleid uit het bord — niet apart bijgehouden.
+   */
+  const replace = (insight: Insight, worker: Worker) => {
+    const existing = placements[insight.slot]
+    if (!existing) return
+    setPlacements((current) => ({
+      ...current,
+      [insight.slot]: { ...existing, workerId: worker.id },
+    }))
+  }
+
+  const resolve = (insight: Insight) =>
+    setResolved((current) => new Set(current).add(insight.id))
 
   return (
     <div className="ico-app pp-root">
       <div className="flex h-full flex-col">
         <PlanningTopbar />
 
-        <div className="flex min-h-0 flex-1 gap-4 px-6 pb-6 pt-3">
-          <div className="flex min-w-0 flex-1 flex-col">
-            <PlanStrip />
-
-            <div className="wca-panel mt-3 min-h-0 flex-1 overflow-auto p-4">
-              <PlanBoard
-                selectedOrderId={selectedOrderId}
-                onSelectOrder={(order: Order) => select(order.id)}
-              />
-            </div>
-          </div>
-
-          <FlagsPanel
-            selectedOrderId={selectedOrderId}
-            onSelectFlag={(flag: Flag) => select(flag.orderId)}
-          />
+        <div className="pp-systems">
+          <span className="pp-systems-label">Connected</span>
+          {SYSTEMS.map((system) => (
+            <span key={system} className="pp-system">
+              <span className="pp-system-dot" />
+              {system}
+            </span>
+          ))}
+          <span className="pp-systems-spacer" />
+          <span className="pp-time">
+            Planning time <s>2h 40</s> <strong>15 min</strong>
+          </span>
         </div>
-      </div>
-    </div>
-  )
-}
 
-/**
- * Statusregel in dezelfde vorm als de RunStrip van de Call Agent, zodat de twee
- * demo's op het eerste gezicht bij elkaar horen.
- */
-function PlanStrip() {
-  const blocking = FLAGS.filter((f) => f.severity === 'blocking').length
+        <div className="pp-layout">
+          <SidePane backlogOrderIds={backlog} selection={selection} onSelect={setSelection} />
 
-  const stats = [
-    { icon: Factory, label: 'Lines', value: String(LINES.length) },
-    { icon: Database, label: 'Orders', value: String(ORDERS.length) },
-    { icon: Users, label: 'People assigned', value: String(crewCount()) },
-  ]
+          <div className="pp-main">
+            <div className="pp-main-head">
+              <span className="pp-side-title">Plan board · week 12</span>
+              {selection ? (
+                <span className="pp-hint">
+                  {selection.kind === 'order'
+                    ? 'Tap an empty slot to place this order'
+                    : 'Tap a slot with an order to assign this person'}
+                </span>
+              ) : (
+                <span className="pp-hint pp-hint-idle">Tap an order or a team member to start</span>
+              )}
+            </div>
 
-  return (
-    <div className="wca-runstrip shrink-0">
-      <div className="flex shrink-0 items-center gap-2">
-        <CheckCircle2 className="h-4 w-4 text-[var(--success-brand)]" />
-        <span className="ico-heading whitespace-nowrap text-[15px] font-semibold text-[var(--text-white)]">
-          Plan proposed
-        </span>
-      </div>
-
-      <span className="flex-1 font-['IBM_Plex_Sans'] text-[12px] italic text-[var(--text-muted)]">
-        Built from ERP, WMS and HR — no spreadsheet involved.
-      </span>
-
-      <div className="flex shrink-0 items-center gap-5">
-        {stats.map((stat) => (
-          <div key={stat.label} className="flex flex-col px-2 py-1 leading-none">
-            <span className="wca-tabnum ico-heading text-[20px] font-bold text-[var(--text-white)]">
-              {stat.value}
-            </span>
-            <span className="mt-1 whitespace-nowrap font-['IBM_Plex_Sans'] text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
-              {stat.label}
-            </span>
+            <PlanBoard
+              placements={placements}
+              insights={openInsights}
+              selection={selection}
+              highlightedSlot={highlightedSlot}
+              onSlotTap={tapSlot}
+            />
           </div>
-        ))}
 
-        <div className="flex flex-col px-2 py-1 leading-none">
-          <span
-            className="wca-tabnum ico-heading text-[20px] font-bold"
-            style={{ color: blocking > 0 ? 'var(--danger-brand)' : 'var(--accent-brand)' }}
-          >
-            {FLAGS.length}
-          </span>
-          <span className="mt-1 whitespace-nowrap font-['IBM_Plex_Sans'] text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
-            Attention points
-          </span>
+          <InsightsPanel
+            insights={insights}
+            resolved={resolved}
+            onHover={setHighlightedSlot}
+            onResolve={resolve}
+            onReplace={replace}
+          />
         </div>
       </div>
     </div>
