@@ -2,9 +2,19 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Settings } from 'lucide-react'
 import '../workforce.css'
 
+type PlanningTopbarProps = {
+  tourRunning: boolean
+  tourCompleted: boolean
+  onStartTour: () => void
+}
+
 // Zelfde topbar als de Call Agent en Forecast Detail — alleen de breadcrumb
-// is van deze pagina. De tour-knop ontbreekt bewust; die komt later.
-export default function PlanningTopbar() {
+// is van deze pagina.
+export default function PlanningTopbar({
+  tourRunning,
+  tourCompleted,
+  onStartTour,
+}: PlanningTopbarProps) {
   return (
     <div className="wca-topbar">
       <div className="wca-topbar-glow" />
@@ -25,6 +35,10 @@ export default function PlanningTopbar() {
       </div>
 
       <div className="flex items-center gap-2">
+        <button type="button" onClick={onStartTour} className="wca-tour-btn">
+          <span className="wca-tour-btn-dot" />
+          {tourRunning ? 'Tour active · Esc to stop' : tourCompleted ? 'Tour again' : 'Start tour'}
+        </button>
         <button type="button" className="wca-topbar-pill">
           <Settings className="h-3.5 w-3.5" />
           Settings

@@ -29,7 +29,7 @@ export default function InsightsPanel({
   const open = insights.filter((i) => !resolved.has(i.id))
 
   return (
-    <aside className="pp-flags">
+    <aside className="pp-flags" data-tour="insights">
       <div className="pp-flags-head">
         <h2 className="ico-heading text-[15px] font-bold text-[var(--text-white)]">Insights</h2>
         <span className={cn('pp-badge', open.length === 0 && 'pp-badge-clear')}>

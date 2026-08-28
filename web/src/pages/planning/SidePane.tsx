@@ -18,7 +18,7 @@ const PLANNED_ORDER_IDS = PLAN_SEQUENCE.map((step) => step.placement.orderId)
  */
 export default function SidePane({ placedOrderIds }: SidePaneProps) {
   return (
-    <aside className="pp-side">
+    <aside className="pp-side" data-tour="inputs">
       <section className="pp-side-block">
         <h2 className="pp-side-title">
           Orders · week 12

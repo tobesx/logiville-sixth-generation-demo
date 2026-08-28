@@ -4,6 +4,7 @@ import PlanningTopbar from './planning/PlanningTopbar'
 import PlanBoard from './planning/PlanBoard'
 import SidePane from './planning/SidePane'
 import InsightsPanel from './planning/InsightsPanel'
+import PlanTour from './planning/PlanTour'
 import {
   PLAN_SEQUENCE,
   SYSTEMS,
@@ -35,6 +36,8 @@ export default function ProductionPlanning() {
   const [placements, setPlacements] = useState<Record<string, Placement>>({})
   const [resolved, setResolved] = useState<Set<string>>(new Set())
   const [highlightedSlot, setHighlightedSlot] = useState<string | null>(null)
+  const [tourStep, setTourStep] = useState(0)
+  const [tourCompleted, setTourCompleted] = useState(false)
   const timers = useRef<number[]>([])
 
   useEffect(() => () => timers.current.forEach(window.clearTimeout), [])
@@ -46,6 +49,12 @@ export default function ProductionPlanning() {
     () => new Set(Object.values(placements).map((p) => p.orderId)),
     [placements],
   )
+
+  // Stap 3 zodra het draait, stap 4 zodra het plan er staat.
+  useEffect(() => {
+    if (tourStep > 0 && tourStep < 3 && phase !== 'idle') setTourStep(3)
+    if (tourStep === 3 && phase === 'complete') setTourStep(4)
+  }, [tourStep, phase])
 
   const reset = () => {
     timers.current.forEach(window.clearTimeout)
@@ -109,7 +118,11 @@ export default function ProductionPlanning() {
   return (
     <div className="ico-app pp-root">
       <div className="flex h-full flex-col">
-        <PlanningTopbar />
+        <PlanningTopbar
+          tourRunning={tourStep > 0}
+          tourCompleted={tourCompleted}
+          onStartTour={() => setTourStep(1)}
+        />
 
         <div className="pp-systems">
           <span className="pp-systems-label">
@@ -145,6 +158,7 @@ export default function ProductionPlanning() {
               className="pp-primary"
               onClick={generate}
               disabled={running}
+              data-tour="generate"
             >
               <Sparkles className="h-3.5 w-3.5" />
               {phase === 'idle'
@@ -159,7 +173,7 @@ export default function ProductionPlanning() {
         <div className="pp-layout">
           <SidePane placedOrderIds={placedOrderIds} />
 
-          <div className="pp-main">
+          <div className="pp-main" data-tour="board">
             <div className="pp-main-head">
               <span className="pp-side-title">Plan board · week 12</span>
               <span className={phase === 'idle' ? 'pp-hint pp-hint-idle' : 'pp-hint'}>
@@ -190,6 +204,21 @@ export default function ProductionPlanning() {
           />
         </div>
       </div>
+
+      {tourStep > 0 ? (
+        <PlanTour
+          step={tourStep}
+          phase={phase}
+          orderCount={PLAN_SEQUENCE.length}
+          insightCount={openInsights.length}
+          onNext={() => setTourStep((s) => s + 1)}
+          onFinish={() => {
+            setTourStep(0)
+            setTourCompleted(true)
+          }}
+          onSkip={() => setTourStep(0)}
+        />
+      ) : null}
     </div>
   )
 }
