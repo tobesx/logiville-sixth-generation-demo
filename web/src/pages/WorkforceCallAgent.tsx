@@ -784,7 +784,11 @@ export default function WorkforceCallAgent() {
               </div>
             ) : null}
 
-            <div className="mt-3 shrink-0" data-tour={isComplete ? 'result' : 'runstrip'}>
+            {/* Eén vaste ankernaam. Hij heette 'result' zodra de run klaar was,
+                waardoor stap 5 van de rondleiding zijn doel kwijt was op het
+                moment dat je er vanaf stap 4 zelf naartoe klikte: geen anker,
+                geen kaart, een tour die actief bleef maar niets toonde. */}
+            <div className="mt-3 shrink-0" data-tour="runstrip">
               <RunStrip
                 state={isComplete ? 'complete' : isRunning ? 'running' : 'idle'}
                 // Het rooster van morgen; dat verandert niet doordat er gebeld

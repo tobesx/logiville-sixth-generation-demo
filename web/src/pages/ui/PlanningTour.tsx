@@ -36,7 +36,7 @@ const TARGET_BY_STEP: Record<number, string | null> = {
   2: 'runstrip',
   3: 'call',
   4: 'card',
-  5: 'result',
+  5: 'runstrip',
 }
 
 const TOTAL_STEPS = 5
@@ -166,7 +166,13 @@ export default function PlanningTour({
     }
   }
 
-  const content = stepContent(step, { scheduled, stillToCall, confirmed, gaps })
+  const content = stepContent(step, {
+    scheduled,
+    stillToCall,
+    confirmed,
+    gaps,
+    isComplete: phase === 'complete',
+  })
 
   return (
     <div className="wca-tour-layer">
@@ -210,7 +216,7 @@ export default function PlanningTour({
               // Stap 4 wijst naar de kaart van de persoon die aan de lijn is.
               // Doorgaan mag pas als diens antwoord verwerkt is; Skip blijft
               // wel werken, anders zit je vast als het gesprek strandt.
-              disabled={step === 4 && !pinnedAnswered}
+              disabled={(step === 4 && !pinnedAnswered) || (step === 5 && phase !== 'complete')}
               onClick={step === 5 ? onFinish : onNext}
             >
               {step === 4 && !pinnedAnswered ? 'Waiting for the answer…' : content.button}
@@ -224,7 +230,13 @@ export default function PlanningTour({
 
 function stepContent(
   step: number,
-  data: { scheduled: number; stillToCall: number; confirmed: number; gaps: number },
+  data: {
+    scheduled: number
+    stillToCall: number
+    confirmed: number
+    gaps: number
+    isComplete: boolean
+  },
 ): { title: string; body: string; button: string } {
   switch (step) {
     case 1:
@@ -252,10 +264,21 @@ function stepContent(
         button: 'Next',
       }
     default:
-      return {
-        title: 'What the planner is left with',
-        body: `${data.confirmed} of ${data.scheduled} confirmed available and ${data.gaps} to follow up, each with the conversation behind it. An afternoon of phone calls became a plan you can act on.`,
-        button: 'Done',
-      }
+      // Zolang de ronde loopt zijn die aantallen een tussenstand, en "13 to
+      // follow up" leest als eindstand terwijl er nog veertig mensen niet
+      // gebeld zijn. Deze variant gaat over de balk zelf, die op dat moment
+      // staat vol te lopen — dan leest de omslag als "hij is klaar" in plaats
+      // van "de tekst sprong".
+      return data.isComplete
+        ? {
+            title: 'What the planner is left with',
+            body: `${data.confirmed} of ${data.scheduled} confirmed available and ${data.gaps} to follow up, each with the conversation behind it. An afternoon of phone calls became a plan you can act on.`,
+            button: 'Done',
+          }
+        : {
+            title: 'Answers landing',
+            body: 'The bar fills as the calls come back: green for confirmed, red for unavailable, orange for the ones that need following up, and grey for everyone still to answer. No spreadsheet, no callbacks.',
+            button: 'Still calling…',
+          }
   }
 }
