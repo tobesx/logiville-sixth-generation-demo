@@ -4,6 +4,9 @@ import { demos } from './demos'
 import './ico.css'
 import './launcher.css'
 
+/** Bookings-pagina van Michiel; de QR ernaast codeert exact deze URL. */
+const MEETING_QR = '/meeting-michiel.svg'
+
 export default function DemoPlaceholder() {
   const navigate = useNavigate()
   const { slug } = useParams()
@@ -46,6 +49,25 @@ export default function DemoPlaceholder() {
               {demo?.description ??
                 'This demo is part of the Sixth Generation showcase and will be available here soon.'}
             </p>
+
+            {/* De QR staat als statische SVG in public/: de URL ligt vast, dus
+                een generator in de bundel zou elke keer hetzelfde plaatje
+                uitrekenen. Werkt daardoor ook zonder netwerk. */}
+            <div className="mt-10 flex items-center gap-5 rounded-2xl border border-[var(--border-brand)] bg-[var(--bg-surface)] p-5 text-left">
+              <img
+                src={MEETING_QR}
+                alt="QR code to book a meeting with Michiel Schepers"
+                className="h-32 w-32 shrink-0 rounded-lg bg-white p-1.5"
+              />
+              <div>
+                <div className="ico-heading text-[18px] font-bold text-[var(--text-white)]">
+                  Talk it through
+                </div>
+                <p className="mt-1 max-w-[26ch] font-['IBM_Plex_Sans'] text-[15px] leading-relaxed text-[var(--text-body)]">
+                  Scan to book a meeting with Michiel Schepers.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
