@@ -217,6 +217,12 @@ export function buildDemoPeople(liveCallers: Worker[] = []): DemoPerson[] {
     }
   }
 
+  // De eerste plek van Warehouse · Early is de vaste kop van het antwoorden-
+  // paneel. Zonder live beller staat daar een mock, en die moet beschikbaar
+  // antwoorden. Eigen rng, zodat de rest van het rooster niet verschuift.
+  const head = mocks[0]
+  if (head) mocks[0] = { ...head, outcome: fullyAvailableOutcome(makeRng(7), SHIFTS.early.label) }
+
   if (liveCallers.length === 0) return mocks
 
   // Alleen plekken in Warehouse · Early worden overschreven; de rest van het

@@ -57,9 +57,25 @@ export function isFinalState(state: CallState): boolean {
 }
 
 /* ---------- timing (all in ms) ---------- */
-/** Modal "connecting to HR" overlay: three steps then dismiss. */
-export const CONNECT_STEP_MS = 1000
+/**
+ * Modal "connecting to HR" overlay: drie stappen, dan weg.
+ *
+ * Stond op 1000 ms per stap. De laatste regel — die met het aantal gevonden
+ * nummers erin, het enige getal dat er iets toe doet — stond dan één seconde
+ * in beeld voor de overlay verdween. Nu duurt het geheel tien seconden, en
+ * blijft die laatste regel het langst staan.
+ */
+export const CONNECT_STEP_MS = 3000
 export const CONNECT_STEPS = 3
+/** Extra tijd nadat de laatste regel is afgevinkt, voor het bellen begint. */
+export const CONNECT_HOLD_MS = 1000
+/**
+ * De vastgezette kop van het paneel — de eerste plek van Warehouse · Early —
+ * antwoordt op een vast moment in plaats van in de willekeurige spreiding. Hij
+ * staat meteen op 'calling'; dit is wanneer zijn antwoord verwerkt is.
+ */
+export const PINNED_ANSWER_MS = 5000
+
 /** Total calling window — every call resolves inside this span. */
 export const RUN_WINDOW_MS = 22000
 /**

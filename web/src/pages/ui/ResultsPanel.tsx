@@ -1,4 +1,4 @@
-import { CheckCircle2, X } from 'lucide-react'
+import { CheckCircle2, Radio, X } from 'lucide-react'
 import CallCard from './CallCard'
 import type { DemoPerson } from '../mockPeople'
 import type { DemoResult } from '../wca'
@@ -6,8 +6,53 @@ import type { TranscriptLine } from '../transcript'
 
 export type ResultItem = {
   person: DemoPerson
-  result: DemoResult
+  /** Null zolang deze persoon aan de lijn is; er valt dan nog niets te tonen. */
+  result: DemoResult | null
   transcript: TranscriptLine[]
+}
+
+/**
+ * Iemand die gebeld wordt maar nog niet geantwoord heeft. Geen uitkomst, geen
+ * citaat, geen transcript — die zijn er pas als het gesprek verwerkt is.
+ */
+function PendingCard({
+  person,
+  onOpen,
+  dataTour,
+}: {
+  person: DemoPerson
+  onOpen: () => void
+  dataTour?: string
+}) {
+  return (
+    <div className="wca-result p-5" data-tour={dataTour}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="ico-heading text-[18px] font-bold text-[var(--text-white)] hover:text-[var(--accent-brand)]"
+          >
+            {person.name}
+          </button>
+          {person.real ? (
+            <span className="wca-live-tag">
+              <Radio className="h-3 w-3" />
+              Live call
+            </span>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-1.5 font-['IBM_Plex_Sans'] text-[14px] font-semibold text-[var(--accent-brand)]">
+          <span className="wca-dot wca-dot-calling" />
+          Calling…
+        </div>
+      </div>
+
+      <p className="mt-3 font-['IBM_Plex_Sans'] text-[14px] italic text-[var(--text-muted)]">
+        Waiting for an answer.
+      </p>
+    </div>
+  )
 }
 
 type ResultsPanelProps = {
@@ -27,8 +72,6 @@ export default function ResultsPanel({
   onSelectWorker,
   onClose,
 }: ResultsPanelProps) {
-  const firstCallId = items.find((item) => !item.result.manual)?.result.id
-
   return (
     <aside className="wca-answers-panel ico-scrollbar" data-tour="answers">
       <div className="wca-answers-header">
@@ -61,18 +104,26 @@ export default function ResultsPanel({
             Waiting for the first response…
           </div>
         ) : (
-          items.map((item) => (
-            <CallCard
-              key={item.result.id}
-              // De rondleiding wijst naar een transcript, dus naar het eerste
-              // échte gesprek. Handmatige invoer staat bovenaan zodra de planner
-              // zelf iets heeft ingevuld, en die kaart heeft niets te tonen.
-              dataTour={item.result.id === firstCallId ? 'card' : undefined}
-              result={item.result}
-              transcript={item.transcript}
-              onOpen={() => onSelectWorker(item.person)}
-            />
-          ))
+          items.map((item, index) =>
+            item.result === null ? (
+              <PendingCard
+                key={item.person.id}
+                dataTour={index === 0 ? 'card' : undefined}
+                person={item.person}
+                onOpen={() => onSelectWorker(item.person)}
+              />
+            ) : (
+              <CallCard
+                key={item.person.id}
+                // De rondleiding wijst naar de vastgezette kop, en die staat
+                // altijd vooraan — of hij nu al geantwoord heeft of niet.
+                dataTour={index === 0 ? 'card' : undefined}
+                result={item.result}
+                transcript={item.transcript}
+                onOpen={() => onSelectWorker(item.person)}
+              />
+            ),
+          )
         )}
       </div>
     </aside>

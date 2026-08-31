@@ -52,7 +52,11 @@ export default function RunStrip({
   const isIdle = state === 'idle'
   const isComplete = state === 'complete'
 
-  const progress = scheduled > 0 ? Math.round((counts.available / scheduled) * 100) : 0
+  // Eén paarse balk die meegroeide werd gelezen als "de agent is zover" — een
+  // voortgangsmeter. Het is er nu een van uitkomsten: elk segment draagt de
+  // kleur van de kolom eronder, en samen vullen ze het rooster. Wat overblijft
+  // is de lege baan: iedereen die nog geen antwoord heeft.
+  const share = (value: number) => (scheduled > 0 ? (value / scheduled) * 100 : 0)
 
   const valueOf = (key: keyof Counts | 'workers'): string => {
     if (key === 'workers') return String(Math.max(scheduled - resolved, 0))
@@ -133,8 +137,21 @@ export default function RunStrip({
       {/* Pas als de agent loopt, en dan rechts van de cijfers: het is de enige
           plek waar voortgang iets betekent. */}
       {isIdle ? null : (
-        <div className="wca-runstrip-progress">
-          <div className="wca-runstrip-progress-fill" style={{ width: `${progress}%` }} />
+        <div
+          className="wca-runstrip-progress"
+          role="img"
+          aria-label={`${counts.available} available, ${counts.unavailable} unavailable, ${counts.action} need action, ${counts.noAnswer} no answer, out of ${scheduled}`}
+        >
+          {STATS.filter((stat) => stat.key !== 'workers').map((stat) => (
+            <span
+              key={stat.key}
+              className="wca-runstrip-seg"
+              style={{
+                width: `${share(counts[stat.key as keyof Counts])}%`,
+                background: stat.color,
+              }}
+            />
+          ))}
         </div>
       )}
     </div>

@@ -21,6 +21,8 @@ import {
   CALL_MIN_MS,
   CONNECT_STEPS,
   CONNECT_STEP_MS,
+  CONNECT_HOLD_MS,
+  PINNED_ANSWER_MS,
   RUN_FIRST_MS,
   RUN_WINDOW_MS,
   isFinalState,
@@ -131,6 +133,13 @@ export default function WorkforceCallAgent() {
   )
   const people = useMemo(() => buildDemoPeople(liveCallers), [liveCallers])
   const byId = useMemo(() => new Map(people.map((person) => [person.id, person])), [people])
+  /**
+   * De kop van het antwoordenpaneel: de eerste plek van Warehouse · Early.
+   * Staat een live beller aan, dan is dat die persoon — de overlay in
+   * `buildDemoPeople` overschrijft juist die plek als eerste. Anders is het de
+   * mock die daar staat. Hangt eraan dat PLAN[0] Warehouse · early blijft.
+   */
+  const pinnedId = people[0]?.id ?? null
   const lanes = useMemo<GanttLane[]>(() => buildLanes(people), [people])
 
   const [phase, setPhase] = useState<Phase>('idle')
@@ -304,12 +313,16 @@ export default function WorkforceCallAgent() {
     order.forEach((person, index) => {
       const frac = n > 1 ? index / (n - 1) : 0
       const jitter = (rng() - 0.5) * 1000
-      const resolveAt = Math.max(
+      const spread = Math.max(
         RUN_FIRST_MS,
         RUN_FIRST_MS + frac * (RUN_WINDOW_MS - RUN_FIRST_MS) + jitter,
       )
       const callDur = CALL_MIN_MS + rng() * (CALL_MAX_MS - CALL_MIN_MS)
-      const callingAt = Math.max(0, resolveAt - callDur)
+      // De kop valt buiten de spreiding: meteen aan de lijn, antwoord op een
+      // vast moment. Zonder live beller is dit degene die de demo draagt.
+      const isPinned = person.id === pinnedId
+      const resolveAt = isPinned ? PINNED_ANSWER_MS : spread
+      const callingAt = isPinned ? 0 : Math.max(0, resolveAt - callDur)
 
       timersRef.current.push(
         window.setTimeout(
@@ -341,10 +354,10 @@ export default function WorkforceCallAgent() {
   // Alles in het rooster wordt gebeld; wie niet aangevinkt is, staat er niet in.
   const activePeople = people
 
-  const beginCalls = (active: DemoPerson[], mockOnly = false) => {
+  const beginCalls = (active: DemoPerson[]) => {
     const realActive = active.filter((person) => person.real)
     const mockActive = active.filter((person) => !person.real)
-    if (ENABLE_LIVE_CALLS && !mockOnly) {
+    if (ENABLE_LIVE_CALLS) {
       runRealIdsRef.current = realActive.map((person) => person.id)
       if (realActive.length > 0) void startRealCalls(realActive)
       scheduleMocks(mockActive)
@@ -354,7 +367,7 @@ export default function WorkforceCallAgent() {
     }
   }
 
-  const startRun = (opts?: { mockOnly?: boolean }) => {
+  const startRun = () => {
     if (phase === 'running') return
     // Wie de planner zelf al heeft ingevuld wordt niet gebeld, en houdt zijn
     // status door de run heen.
@@ -381,7 +394,6 @@ export default function WorkforceCallAgent() {
     // die stap bestaat niet meer, en zonder iets dat hem weer losliet bleef de
     // overlay hangen.
     const stepMs = CONNECT_STEP_MS
-    const mockOnly = opts?.mockOnly ?? false
 
     setOverlayStep(0)
     for (let step = 1; step < CONNECT_STEPS; step += 1) {
@@ -391,8 +403,8 @@ export default function WorkforceCallAgent() {
     timersRef.current.push(
       window.setTimeout(() => {
         setOverlayStep(null)
-        beginCalls(active, mockOnly)
-      }, stepMs * CONNECT_STEPS),
+        beginCalls(active)
+      }, stepMs * CONNECT_STEPS + CONNECT_HOLD_MS),
     )
   }
 
@@ -458,7 +470,10 @@ export default function WorkforceCallAgent() {
   }
 
   /* ---------- guided tour ---------- */
-  const handleStart = () => startRun({ mockOnly: tourStep !== 0 })
+  // De rondleiding belt net zo hard als een gewone ronde. Stond eerder op
+  // mockOnly zolang de tour liep: Dennis en Michiel droegen dan wél het
+  // 'Live call'-label, maar hun antwoord kwam uit de mock-data.
+  const handleStart = () => startRun()
 
   const startTour = () => {
     resetDemo()
@@ -476,28 +491,35 @@ export default function WorkforceCallAgent() {
 
   /** Een afgerond gesprek, niet iets wat de planner zelf heeft ingevuld. */
   const hasCalledAnswer = resolvedIds.some((id) => !manual[id])
+  /** De vastgezette kop is aan de lijn: er staat een kaart om naar te wijzen. */
+  const pinnedCalling = pinnedId !== null && overlayStep === null && phase !== 'idle'
+  const pinnedAnswered = pinnedId !== null && resolvedIds.includes(pinnedId)
 
   useEffect(() => {
-    // Stap 4 zodra er een échte uitkomst binnen is. Handmatige invoer telt niet
-    // mee: die zet geen transcript op het scherm om naar te wijzen.
-    if (tourStep > 0 && tourStep < 4 && phase !== 'idle' && hasCalledAnswer) setTourStep(4)
+    // Stap 4 zodra de kop aan de lijn is — niet pas bij zijn antwoord. De kaart
+    // staat er dan al, leeg, en de Next-knop blijft dicht tot het antwoord
+    // verwerkt is. Wachten tot na de HR-overlay, anders wijst de kaart naar iets
+    // wat achter een schermvullende modal staat.
+    if (tourStep > 0 && tourStep < 4 && pinnedCalling) setTourStep(4)
     if (tourStep === 4 && phase === 'complete') setTourStep(5)
     // Stap 3 en 4 horen bij een lopende run, stap 5 bij het resultaat. Een
     // reset zet de fase terug en die stappen tekenen dan niets, terwijl de
     // topbar "Tour active" bleef melden — zonder toetsenbord kwam je daar niet
     // meer uit. Ongeldige stap betekent nu: rondleiding afgelopen.
     if (tourStep === 4 && phase === 'idle') setTourStep(0)
-    if (tourStep === 5 && phase !== 'complete') setTourStep(0)
+    // Stap 5 mag ook tijdens een lopende run, sinds je vanaf stap 4 zelf mag
+    // doorklikken. Alleen een reset beëindigt hem nog.
+    if (tourStep === 5 && phase === 'idle') setTourStep(0)
     // Drawer dicht, maar het antwoordenpaneel blijft open: stap 4 wijst naar
     // de bovenste resultaatkaart, en die staat daarin.
     if (tourStep > 0 && phase === 'complete') setSelectedBlockKey(null)
     // Stap 5 wijst naar de balk en naar het plan eronder; het antwoordenpaneel
     // dekt daar een derde van af en heeft zijn werk gedaan bij stap 4.
     if (tourStep === 5) setAnswersOpen(false)
-    // hasCalledAnswer hoort erbij: zonder die dependency draaide dit effect
-    // niet op het moment dat het eerste gesprek binnenkwam, en bleef de
-    // rondleiding op stap 3 hangen tot de hele run klaar was.
-  }, [tourStep, phase, hasCalledAnswer])
+    // pinnedCalling en pinnedAnswered horen erbij: zonder die dependencies
+    // draait dit effect niet op het moment dat de kaart verschijnt of het
+    // antwoord binnenkomt.
+  }, [tourStep, phase, hasCalledAnswer, pinnedCalling, pinnedAnswered])
 
   /* ---------- derived data ---------- */
   const resultFor = (person: DemoPerson): DemoResult => {
@@ -546,6 +568,59 @@ export default function WorkforceCallAgent() {
   const getTone = (person: DemoPerson) =>
     toneFromState(states[person.id] ?? 'ready', classificationFor(person))
 
+  /**
+   * Het antwoordenpaneel toont meer dan alleen afgeronde gesprekken: wie aan de
+   * lijn is staat er al, met een lege kaart. Volgorde:
+   *
+   *   1. de vastgezette kop, altijd bovenaan
+   *   2. de overige live bellers, wie het eerst antwoordde het hoogst
+   *   3. de rest, nieuwste antwoord bovenaan
+   */
+  const panelItems = useMemo<ResultItem[]>(() => {
+    const rank = new Map(resolvedIds.map((id, index) => [id, index]))
+
+    const build = (person: DemoPerson): ResultItem => {
+      if (!rank.has(person.id)) return { person, result: null, transcript: [] }
+      const result = resultFor(person)
+      return {
+        person,
+        result,
+        transcript: result.manual
+          ? []
+          : buildTranscript(person, result.quote, result.classification),
+      }
+    }
+
+    const running = phase !== 'idle'
+    const seen = new Set<string>()
+    const take = (person: DemoPerson | undefined) => {
+      if (!person || seen.has(person.id)) return null
+      seen.add(person.id)
+      return build(person)
+    }
+
+    const head = pinnedId && running ? take(byId.get(pinnedId)) : null
+
+    // Live bellers op volgorde van binnenkomst; wie nog wacht sluit aan.
+    const live = running
+      ? people
+          .filter((person) => person.real && !seen.has(person.id))
+          .sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity))
+          .map(take)
+          .filter((item): item is ResultItem => item !== null)
+      : []
+
+    const rest = [...resolvedIds]
+      .reverse()
+      .map((id) => byId.get(id))
+      .filter((person): person is DemoPerson => Boolean(person) && !seen.has(person!.id))
+      .map(take)
+      .filter((item): item is ResultItem => item !== null)
+
+    return [...(head ? [head] : []), ...live, ...rest]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedIds, realCalls, byId, manual, people, phase, pinnedId])
+
   const resolvedItems = useMemo<ResultItem[]>(() => {
     const items = resolvedIds
       .map((id) => byId.get(id))
@@ -570,11 +645,14 @@ export default function WorkforceCallAgent() {
   }, [resolvedIds, realCalls, byId, manual])
 
   const counts = useMemo(() => {
+    // Alleen afgeronde gesprekken tellen mee; wie aan de lijn is heeft nog geen
+    // uitkomst.
+    const done = resolvedItems.flatMap((i) => (i.result ? [i.result] : []))
     return {
-      available: resolvedItems.filter((i) => i.result.classification === 'YES').length,
-      unavailable: resolvedItems.filter((i) => i.result.classification === 'NO').length,
-      action: resolvedItems.filter((i) => i.result.classification === 'OTHER').length,
-      noAnswer: resolvedItems.filter((i) => i.result.classification === 'NO_ANSWER').length,
+      available: done.filter((r) => r.classification === 'YES').length,
+      unavailable: done.filter((r) => r.classification === 'NO').length,
+      action: done.filter((r) => r.classification === 'OTHER').length,
+      noAnswer: done.filter((r) => r.classification === 'NO_ANSWER').length,
     }
   }, [resolvedItems])
 
@@ -721,7 +799,7 @@ export default function WorkforceCallAgent() {
 
           {answersOpen && phase !== 'idle' ? (
             <ResultsPanel
-              items={resolvedItems}
+              items={panelItems}
               // Het hele rooster, niet alleen wie gebeld is: `resolvedIds` telt
               // ook de handmatige invoer mee, en dan las de teller "100 / 97".
               runCount={activePeople.length}
@@ -813,6 +891,7 @@ export default function WorkforceCallAgent() {
           gaps={gaps}
           overlayOpen={overlayStep !== null}
           hasCalledAnswer={hasCalledAnswer}
+          pinnedAnswered={pinnedAnswered}
           onNext={() => setTourStep((s) => s + 1)}
           onFinish={finishTour}
           onSkip={skipTour}

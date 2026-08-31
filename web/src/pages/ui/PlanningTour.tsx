@@ -20,6 +20,8 @@ type PlanningTourProps = {
   overlayOpen: boolean
   /** Er is minstens één gesprek afgerond, dus er staat een transcript. */
   hasCalledAnswer: boolean
+  /** Het antwoord van de vastgezette kop is verwerkt. */
+  pinnedAnswered: boolean
   onNext: () => void
   onFinish: () => void
   onSkip: () => void
@@ -76,6 +78,7 @@ export default function PlanningTour({
   gaps,
   overlayOpen,
   hasCalledAnswer,
+  pinnedAnswered,
   onNext,
   onFinish,
   onSkip,
@@ -116,7 +119,7 @@ export default function PlanningTour({
   if (step === 3 && overlayOpen) return null
   // Stap 4 wijst naar het eerste transcript, dus die moet er zijn.
   if (step === 4 && !hasCalledAnswer) return null
-  if (step === 5 && phase !== 'complete') return null
+  if (step === 5 && phase === 'idle') return null
   // Wachten tot het anker er is; panelen schuiven in.
   if (!rect) return null
 
@@ -200,16 +203,17 @@ export default function PlanningTour({
             // De gebruiker drukt zelf op de knop; stap 4 komt zodra het eerste
             // gesprek is afgerond.
             <span className="wca-tour-hint">↑ Press the button</span>
-          ) : step === 4 ? (
-            // Doorgaan zou naar het eindresultaat springen dat er nog niet is.
-            <span className="wca-tour-hint">Calling…</span>
           ) : (
             <button
               type="button"
-              className="wca-tour-next"
+              className="wca-tour-next disabled:cursor-not-allowed disabled:opacity-40"
+              // Stap 4 wijst naar de kaart van de persoon die aan de lijn is.
+              // Doorgaan mag pas als diens antwoord verwerkt is; Skip blijft
+              // wel werken, anders zit je vast als het gesprek strandt.
+              disabled={step === 4 && !pinnedAnswered}
               onClick={step === 5 ? onFinish : onNext}
             >
-              {content.button}
+              {step === 4 && !pinnedAnswered ? 'Waiting for the answer…' : content.button}
             </button>
           )}
         </div>

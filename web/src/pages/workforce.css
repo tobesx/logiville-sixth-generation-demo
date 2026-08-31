@@ -1499,19 +1499,21 @@
   background: var(--accent-dim);
 }
 
+/* Uitkomstenbalk: de vier statussen naast elkaar, in dezelfde kleuren als de
+   kolommen ernaast. De lege baan is wie nog geen antwoord heeft. De paarse
+   gloed die hier stond hoorde bij de accentkleur van de oude voortgangsbalk en
+   vertelde niets meer. */
 .wca-runstrip-progress {
+  display: flex;
   flex: 1;
   height: 8px;
   border-radius: 4px;
   background: #E3E8EE;
   overflow: hidden;
-  box-shadow: 0 0 16px rgba(99, 91, 255, 0.28);
 }
 
-.wca-runstrip-progress-fill {
+.wca-runstrip-seg {
   height: 100%;
-  border-radius: 4px;
-  background: var(--accent-brand);
   transition: width 500ms ease-out;
 }
 
