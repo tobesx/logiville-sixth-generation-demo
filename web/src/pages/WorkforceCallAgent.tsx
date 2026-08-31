@@ -322,13 +322,15 @@ export default function WorkforceCallAgent() {
       order[j] = a
     }
     const n = order.length
+    // Ruimte tussen twee antwoorden. De jitter hing hier vast op ±500 ms,
+    // ruim twee keer die tussenruimte, waardoor er telkens drie of vier
+    // kaarten binnen een oogwenk binnenvielen en er daarna een gat viel — dat
+    // schokkerige. Nu schaalt hij mee: de cadans blijft gelijkmatig zonder
+    // metronoom te worden.
+    const step = (RUN_WINDOW_MS - RUN_FIRST_MS) / Math.max(n - 1, 1)
     order.forEach((person, index) => {
-      const frac = n > 1 ? index / (n - 1) : 0
-      const jitter = (rng() - 0.5) * 1000
-      const spread = Math.max(
-        RUN_FIRST_MS,
-        RUN_FIRST_MS + frac * (RUN_WINDOW_MS - RUN_FIRST_MS) + jitter,
-      )
+      const jitter = (rng() - 0.5) * step * 0.7
+      const spread = Math.max(RUN_FIRST_MS, RUN_FIRST_MS + index * step + jitter)
       const callDur = CALL_MIN_MS + rng() * (CALL_MAX_MS - CALL_MIN_MS)
       // De kop valt buiten de spreiding: meteen aan de lijn, antwoord op een
       // vast moment. Zonder live beller is dit degene die de demo draagt.
