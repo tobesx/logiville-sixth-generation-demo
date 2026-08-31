@@ -41,16 +41,20 @@ export default function CallCard({ result, transcript, onOpen, dataTour, pinned 
       data-tour={dataTour}
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        {/* min-w-0 zodat deze groep mag krimpen in plaats van de statuskolom
+            weg te duwen, en text-left omdat een <button> zijn tekst centreert —
+            met de Live call-pill erbij past een lange naam niet op één regel, en
+            stond hij daardoor gecentreerd tussen de andere kaarten. */}
+        <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
             onClick={onOpen}
-            className="ico-heading text-[18px] font-bold text-[var(--text-white)] hover:text-[var(--accent-brand)]"
+            className="ico-heading min-w-0 text-left text-[18px] font-bold text-[var(--text-white)] hover:text-[var(--accent-brand)]"
           >
             {result.name}
           </button>
           {result.real ? (
-            <span className="wca-live-tag">
+            <span className="wca-live-tag shrink-0">
               <Radio className="h-3 w-3" />
               Live call
             </span>
@@ -58,7 +62,7 @@ export default function CallCard({ result, transcript, onOpen, dataTour, pinned 
         </div>
         <div
           className={cn(
-            'flex items-center gap-1.5 font-["IBM_Plex_Sans"] text-[14px] font-semibold',
+            'flex shrink-0 items-center gap-1.5 font-["IBM_Plex_Sans"] text-[14px] font-semibold',
             meta.className,
           )}
         >

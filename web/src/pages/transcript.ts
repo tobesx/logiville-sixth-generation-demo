@@ -29,7 +29,7 @@ export function buildTranscript(
   // STAP 1 — de prompt schrijft deze zin letterlijk voor, groet en vraag in één.
   lines.push({
     speaker: 'agent',
-    text: `Hello, you are speaking with the planning agent from Sixth Generation. Are you available for a shift ${shift}?`,
+    text: `Hello, you are speaking with the planning agent. Are you available tomorrow for the shift ${shift}?`,
   })
 
   if (classification === 'NO_ANSWER' || !quote) {

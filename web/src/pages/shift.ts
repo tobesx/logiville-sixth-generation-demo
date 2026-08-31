@@ -105,21 +105,24 @@ export function formatShiftForCall(worker: Worker): string {
   return `${startDate} ${startTime} - ${compactDateFormatter.format(end)} ${endTime}`
 }
 
+const HOUR_WORDS = [
+  'twelve', 'one', 'two', 'three', 'four', 'five',
+  'six', 'seven', 'eight', 'nine', 'ten', 'eleven',
+]
+
 /**
  * Spiegel van `hourToNL` in server/src/realtime-bridge.js. De agent spreekt
  * Nederlands; het transcript in de UI is daar de vertaling van, dus het uur
  * moet op dezelfde manier benoemd worden en niet als kloktijd.
+ *
+ * Voluit en zonder dagdeel, net als daar: de openingszin zegt al "tomorrow",
+ * en "tomorrow … from six in the morning" leest dubbel.
  */
 function hourToSpeech(hour: number): string {
-  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
-  if (hour < 6) return `${h12} at night`
-  if (hour < 12) return `${h12} in the morning`
-  if (hour === 12) return '12 noon'
-  if (hour < 18) return `${h12} in the afternoon`
-  return `${h12} in the evening`
+  return `${HOUR_WORDS[hour % 12] ?? String(hour)} o'clock`
 }
 
-/** Zoals de agent de shift uitspreekt: "from 6 in the morning until 2 in the afternoon". */
+/** Zoals de agent de shift uitspreekt: "from six o'clock until two o'clock". */
 export function formatShiftForSpeech(worker: Worker): string {
   const planned = getPlannedShiftForTomorrow(worker)
   const start = new Date(planned.shift_start_at)
