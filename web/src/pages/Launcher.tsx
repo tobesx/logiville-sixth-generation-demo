@@ -36,9 +36,11 @@ function FeaturedCard({ demo, onOpen, delay }: { demo: Demo; onOpen: () => void;
           <p className="mt-3 ico-heading text-[18px] font-semibold text-[var(--accent-brand)] xl:text-[20px]">
             {demo.subtitle}
           </p>
-          <p className="mt-4 max-w-[34ch] font-['IBM_Plex_Sans'] text-[15px] leading-relaxed text-[var(--text-body)] xl:text-[16px]">
-            {demo.description}
-          </p>
+          {demo.description ? (
+            <p className="mt-4 max-w-[34ch] font-['IBM_Plex_Sans'] text-[15px] leading-relaxed text-[var(--text-body)] xl:text-[16px]">
+              {demo.description}
+            </p>
+          ) : null}
           <span className="demo-cta ico-heading mt-8 inline-flex items-center gap-2 text-[17px] font-bold text-[var(--text-white)]">
             {demo.cta}
             <ArrowRight className="demo-cta-arrow h-5 w-5" />
@@ -69,9 +71,11 @@ function CompactCard({ demo, onOpen, delay }: { demo: Demo; onOpen: () => void; 
           <p className="mt-1 ico-heading text-[13px] font-semibold text-[var(--accent-brand)]">
             {demo.subtitle}
           </p>
-          <p className="mt-2 font-['IBM_Plex_Sans'] text-[13px] leading-snug text-[var(--text-muted)] xl:text-[14px]">
-            {demo.description}
-          </p>
+          {demo.description ? (
+            <p className="mt-2 font-['IBM_Plex_Sans'] text-[13px] leading-snug text-[var(--text-muted)] xl:text-[14px]">
+              {demo.description}
+            </p>
+          ) : null}
           <span className="demo-cta mt-auto inline-flex items-center gap-1.5 pt-3 font-['IBM_Plex_Sans'] text-[13px] font-semibold text-[var(--text-body)]">
             {demo.cta}
             <ArrowRight className="demo-cta-arrow h-4 w-4" />

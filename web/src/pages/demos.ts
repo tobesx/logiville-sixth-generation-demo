@@ -6,7 +6,8 @@ export type Demo = {
   path: string
   title: string
   subtitle: string
-  description: string
+  /** Optioneel: niet elk blok heeft nog toelichting nodig. */
+  description?: string
   cta: string
   icon: LucideIcon
   featured?: boolean
@@ -39,8 +40,6 @@ export const demos: Demo[] = [
     path: '/demo/demand-forecasting',
     title: 'Demand Forecasting',
     subtitle: 'Turn historical data into better decisions',
-    description:
-      'Explore how forecasting can help operations anticipate demand and make smarter planning decisions.',
     cta: 'Explore demo',
     icon: LineChart,
   },
