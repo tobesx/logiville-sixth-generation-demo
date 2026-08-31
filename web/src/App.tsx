@@ -3,8 +3,6 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import Launcher from './pages/Launcher'
 import DemoPlaceholder from './pages/DemoPlaceholder'
 import WorkforceCallAgent from './pages/WorkforceCallAgent'
-import ForecastDetail from './pages/ForecastDetail'
-import ProductionPlanning from './pages/ProductionPlanning'
 
 export default function App() {
   useEffect(() => {
@@ -15,8 +13,8 @@ export default function App() {
     <Routes>
       <Route index element={<Launcher />} />
       <Route path="demo/workforce-call-agent" element={<WorkforceCallAgent />} />
-      <Route path="demo/demand-forecasting" element={<ForecastDetail />} />
-      <Route path="demo/smart-production-planning" element={<ProductionPlanning />} />
+      {/* Demand Forecasting en Smart Production Planning vallen hier weer in.
+          Hun code staat in web/archive/ — zie de README daar. */}
       <Route path="demo/:slug" element={<DemoPlaceholder />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
