@@ -4,7 +4,7 @@ import { createRun, getRun, startOutboundCall } from '../lib/api'
 import { DEFAULT_VOICE } from '@shared'
 import type { RealtimeVoice } from '@shared'
 import { formatShiftForCall } from './shift'
-import { buildDemoPeople, roleForLiveCaller } from './mockPeople'
+import { buildDemoPeople, roleForLiveCaller, withAvailableOutcome } from './mockPeople'
 import { DEFAULT_WORKERS } from './workers'
 import { listPeople } from '../lib/api'
 import type { Worker } from '@shared'
@@ -131,15 +131,27 @@ export default function WorkforceCallAgent() {
     () => candidates.filter((p) => realToggles[p.id]),
     [candidates, realToggles],
   )
-  const people = useMemo(() => buildDemoPeople(liveCallers), [liveCallers])
-  const byId = useMemo(() => new Map(people.map((person) => [person.id, person])), [people])
   /**
-   * De kop van het antwoordenpaneel: de eerste plek van Warehouse · Early.
-   * Staat een live beller aan, dan is dat die persoon — de overlay in
-   * `buildDemoPeople` overschrijft juist die plek als eerste. Anders is het de
-   * mock die daar staat. Hangt eraan dat PLAN[0] Warehouse · early blijft.
+   * Het rooster, plus de vastgezette kop van het antwoordenpaneel: de bovenste
+   * regel van Warehouse · Early zoals die op het scherm staat. `buildLanes`
+   * sorteert echte bellers eerst en daarna op naam, dus dat is niet zomaar de
+   * eerste persoon uit `buildDemoPeople`. Met live bellen aan is het de eerste
+   * live beller; anders de mock die alfabetisch bovenaan staat. Die mock
+   * antwoordt beschikbaar, zodat de demo altijd met een ja opent.
    */
-  const pinnedId = people[0]?.id ?? null
+  const { people, pinnedId } = useMemo(() => {
+    const base = buildDemoPeople(liveCallers)
+    const head = buildLanes(base)
+      .find((lane) => lane.team === 'Warehouse')
+      ?.shifts.find((shift) => shift.shiftKey === 'early')?.workers[0]
+
+    if (!head) return { people: base, pinnedId: null }
+    return {
+      people: base.map((person) => (person.id === head.id ? withAvailableOutcome(person) : person)),
+      pinnedId: head.id,
+    }
+  }, [liveCallers])
+  const byId = useMemo(() => new Map(people.map((person) => [person.id, person])), [people])
   const lanes = useMemo<GanttLane[]>(() => buildLanes(people), [people])
 
   const [phase, setPhase] = useState<Phase>('idle')
@@ -591,7 +603,9 @@ export default function WorkforceCallAgent() {
       }
     }
 
-    const running = phase !== 'idle'
+    // Pas als de HR-overlay weg is. Daarvoor staat er nog geen nummer tegenover
+    // een naam, en een kaart die "Calling…" meldt zou liegen.
+    const dialling = phase !== 'idle' && overlayStep === null
     const seen = new Set<string>()
     const take = (person: DemoPerson | undefined) => {
       if (!person || seen.has(person.id)) return null
@@ -599,10 +613,10 @@ export default function WorkforceCallAgent() {
       return build(person)
     }
 
-    const head = pinnedId && running ? take(byId.get(pinnedId)) : null
+    const head = pinnedId && dialling ? take(byId.get(pinnedId)) : null
 
     // Live bellers op volgorde van binnenkomst; wie nog wacht sluit aan.
-    const live = running
+    const live = dialling
       ? people
           .filter((person) => person.real && !seen.has(person.id))
           .sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity))
@@ -619,7 +633,7 @@ export default function WorkforceCallAgent() {
 
     return [...(head ? [head] : []), ...live, ...rest]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedIds, realCalls, byId, manual, people, phase, pinnedId])
+  }, [resolvedIds, realCalls, byId, manual, people, phase, pinnedId, overlayStep])
 
   const resolvedItems = useMemo<ResultItem[]>(() => {
     const items = resolvedIds

@@ -187,6 +187,16 @@ function buildOutcome(rng: () => number, shiftLabel: string): DemoOutcome {
  * in plaats van erbij te komen. Zo blijft het totaal gelijk, blijven de
  * blokgroottes kloppen, en staan de echte nummers altijd in dezelfde lane.
  */
+/**
+ * De vaste kop van het antwoordenpaneel moet beschikbaar antwoorden. Welke
+ * persoon dat is bepaalt `buildLanes` — die sorteert echte bellers eerst en
+ * daarna op naam — dus dat kan hier niet, en gebeurt in de pagina zelf. Eigen
+ * rng, zodat de rest van het rooster niet verschuift.
+ */
+export function withAvailableOutcome(person: DemoPerson): DemoPerson {
+  return { ...person, outcome: fullyAvailableOutcome(makeRng(7), SHIFTS.early.label) }
+}
+
 export function buildDemoPeople(liveCallers: Worker[] = []): DemoPerson[] {
   const rng = makeRng(20260601)
 
@@ -216,12 +226,6 @@ export function buildDemoPeople(liveCallers: Worker[] = []): DemoPerson[] {
       index += 1
     }
   }
-
-  // De eerste plek van Warehouse · Early is de vaste kop van het antwoorden-
-  // paneel. Zonder live beller staat daar een mock, en die moet beschikbaar
-  // antwoorden. Eigen rng, zodat de rest van het rooster niet verschuift.
-  const head = mocks[0]
-  if (head) mocks[0] = { ...head, outcome: fullyAvailableOutcome(makeRng(7), SHIFTS.early.label) }
 
   if (liveCallers.length === 0) return mocks
 
