@@ -46,13 +46,16 @@ function resolveVoice(v) {
   return VALID_VOICES.includes(v) ? v : DEFAULT_VOICE;
 }
 
+const UUR_IN_WOORDEN = [
+  'twaalf', 'een', 'twee', 'drie', 'vier', 'vijf',
+  'zes', 'zeven', 'acht', 'negen', 'tien', 'elf',
+];
+
+// Voluit, niet als cijfer: "6 uur" liet het model zelf beslissen hoe het dat
+// uitspreekt. Zonder dagdeel — de zin begint al met "morgen", en "morgen ...
+// van zes uur 's morgens" leest dubbel.
 function hourToNL(h) {
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  if (h >= 0 && h < 6)  return `${h12} uur 's nachts`;
-  if (h < 12)            return `${h12} uur 's morgens`;
-  if (h === 12)          return `12 uur 's middags`;
-  if (h < 18)            return `${h12} uur 's middags`;
-  return `${h12} uur 's avonds`;
+  return `${UUR_IN_WOORDEN[h % 12]} uur`;
 }
 
 function shiftToSpeech(tijdslot) {
@@ -63,12 +66,12 @@ function shiftToSpeech(tijdslot) {
 
 function buildSystemPrompt(person, shiftSpeech) {
   return `Je bent een planning agent van Sixth Generation.
-Je belt ${person.name} om te vragen of hij/zij beschikbaar is voor een shift ${shiftSpeech}.
+Je belt ${person.name} om te vragen of hij/zij morgen beschikbaar is voor de shift ${shiftSpeech}.
 
 VERPLICHTE GESPREKSFLOW — volg deze stappen altijd in volgorde, sla nooit een stap over:
 
 STAP 1 — VRAAG STELLEN:
-Begin ALTIJD met exact: "Goedendag, u spreekt met de planningsagent van Sixth Generation. Bent u beschikbaar voor een shift ${shiftSpeech}?"
+Begin ALTIJD met exact: "Goedendag, u spreekt met de planningsagent. Bent u morgen beschikbaar voor de shift ${shiftSpeech}?"
 Wacht daarna op het antwoord van de persoon. Zeg niets meer.
 
 STAP 2 — ANTWOORD ONTVANGEN:
