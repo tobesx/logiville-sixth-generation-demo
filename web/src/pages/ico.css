@@ -259,6 +259,17 @@
   height: 8px;
   border-radius: 999px;
   background: var(--success-brand);
+  animation: icoPulse 1.5s ease infinite;
+}
+
+@keyframes icoPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .ico-switch[data-state='checked'] {

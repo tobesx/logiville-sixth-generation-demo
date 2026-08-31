@@ -112,10 +112,9 @@
 }
 
 /* Ambient glow orb inside the featured card.
-   Was een blur(6px) met een oneindige scale-animatie. Een geblurde laag
-   opschalen laat de blur elke frame opnieuw rasteren — op een Pi hield dat
-   in z'n eentje de compositor wakker op een pagina waar niets gebeurt. De
-   gradient is al zacht, dus de blur voegde niets toe. */
+   Zonder de blur(6px) die hier ooit bij hoorde: een geblurde laag opschalen
+   laat die blur elke frame opnieuw rasteren, en dat was op de Pi het duurste
+   onderdeel van de hele pagina. De gradient is zacht genoeg zonder. */
 .demo-card-featured::after {
   content: '';
   position: absolute;
@@ -124,7 +123,7 @@
   width: 55%;
   height: 70%;
   background: radial-gradient(circle, rgba(237, 174, 73, 0.22) 0%, rgba(237, 174, 73, 0) 70%);
-  opacity: 0.8;
+  animation: launcherGlow 6s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -161,4 +160,16 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--accent-brand);
+}
+
+@keyframes launcherGlow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
 }

@@ -830,6 +830,7 @@
   border-color: var(--accent-brand);
   background: var(--accent-dim);
   color: var(--accent-ink);
+  animation: wcaChipPulse 1.3s ease-in-out infinite;
 }
 
 .wca-gchip-yes {
@@ -886,7 +887,7 @@
 }
 
 .wca-dot-pending { background: #C1C9D2; }
-.wca-dot-calling { background: var(--accent-brand); }
+.wca-dot-calling { background: var(--accent-brand); animation: icoPulse 1.3s ease-in-out infinite; }
 .wca-dot-yes { background: var(--success-brand); }
 .wca-dot-no { background: var(--danger-brand); }
 .wca-dot-other { background: var(--warn-brand); }
@@ -1594,6 +1595,7 @@
   flex: 0 0 auto;
   border-radius: 999px;
   background: #EFA94A;
+  animation: dotpulse 1.8s ease-in-out infinite;
 }
 
 /* Full-screen layer that hosts backdrop, spotlight and coachmark */
@@ -1751,7 +1753,7 @@
 .wca-tour-callpulse {
   position: relative;
   z-index: 95;
-  box-shadow: 0 0 0 4px rgba(99, 91, 255, 0.35);
+  animation: callring 1.5s ease-out infinite;
 }
 
 /* Completion toast */
@@ -1835,5 +1837,37 @@
   .wca-manual-btn-no:hover {
     border-color: var(--danger-brand);
     background: color-mix(in srgb, var(--danger-brand) 10%, transparent);
+  }
+}
+
+@keyframes wcaChipPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 91, 255, 0.32);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(99, 91, 255, 0);
+  }
+}
+
+@keyframes callring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 91, 255, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(99, 91, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 91, 255, 0);
+  }
+}
+
+@keyframes dotpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
   }
 }
