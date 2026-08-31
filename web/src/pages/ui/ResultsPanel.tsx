@@ -1,4 +1,5 @@
 import { CheckCircle2, Radio, X } from 'lucide-react'
+import { cn } from '../../lib/shadcn/utils'
 import CallCard from './CallCard'
 import type { DemoPerson } from '../mockPeople'
 import type { DemoResult } from '../wca'
@@ -19,13 +20,15 @@ function PendingCard({
   person,
   onOpen,
   dataTour,
+  pinned,
 }: {
   person: DemoPerson
   onOpen: () => void
   dataTour?: string
+  pinned?: boolean
 }) {
   return (
-    <div className="wca-result p-5" data-tour={dataTour}>
+    <div className={cn('wca-result p-5', pinned && 'wca-result-pinned')} data-tour={dataTour}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button
@@ -109,6 +112,7 @@ export default function ResultsPanel({
               <PendingCard
                 key={item.person.id}
                 dataTour={index === 0 ? 'card' : undefined}
+                pinned={index === 0}
                 person={item.person}
                 onOpen={() => onSelectWorker(item.person)}
               />
@@ -118,6 +122,7 @@ export default function ResultsPanel({
                 // De rondleiding wijst naar de vastgezette kop, en die staat
                 // altijd vooraan — of hij nu al geantwoord heeft of niet.
                 dataTour={index === 0 ? 'card' : undefined}
+                pinned={index === 0}
                 result={item.result}
                 transcript={item.transcript}
                 onOpen={() => onSelectWorker(item.person)}

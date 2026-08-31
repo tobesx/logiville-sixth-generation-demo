@@ -21,9 +21,11 @@ type CallCardProps = {
   onOpen?: () => void
   /** Anker voor de rondleiding; alleen de bovenste kaart zet dit. */
   dataTour?: string
+  /** De vastgezette kop van het paneel; die houdt de witte achtergrond. */
+  pinned?: boolean
 }
 
-export default function CallCard({ result, transcript, onOpen, dataTour }: CallCardProps) {
+export default function CallCard({ result, transcript, onOpen, dataTour, pinned }: CallCardProps) {
   const [showTranscript, setShowTranscript] = useState(false)
   const meta = outcomeMeta[result.classification]
   const Icon = meta.icon
@@ -32,6 +34,7 @@ export default function CallCard({ result, transcript, onOpen, dataTour }: CallC
     <div
       className={cn(
         'wca-result p-5',
+        pinned && 'wca-result-pinned',
         result.real && 'wca-result-real',
         result.classification === 'OTHER' && 'wca-result-action',
       )}
